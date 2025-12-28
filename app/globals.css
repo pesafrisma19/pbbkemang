@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+
+  --color-card: var(--bg-secondary);
+  --color-card-foreground: var(--text-primary);
+
+  --color-primary: var(--accent-blue);
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: var(--bg-tertiary);
+  --color-secondary-foreground: var(--text-primary);
+
+  --color-destructive: var(--accent-red);
+  --color-destructive-foreground: #ffffff;
+
+  --color-muted: var(--bg-tertiary);
+  --color-muted-foreground: var(--text-secondary);
+
+  --color-accent: var(--accent-blue);
+  --color-accent-foreground: #ffffff;
+
+  --color-success: var(--accent-green);
+  --color-success-foreground: #ffffff;
+
+  --color-warning: var(--accent-orange);
+  --color-warning-foreground: #ffffff;
+
+  --color-border: var(--bg-tertiary);
+  --color-input: var(--bg-tertiary);
+  --color-ring: var(--accent-blue);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+/* Base Styles */
+:root {
+  /* iOS Light Mode Colors */
+  --bg-primary: #F2F2F7;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #E5E5EA;
+
+  --text-primary: #000000;
+  --text-secondary: #8E8E93;
+
+  --accent-blue: #007AFF;
+  --accent-green: #34C759;
+  --accent-red: #FF3B30;
+  --accent-orange: #FF9500;
+
+  --radius: 1.25rem;
+  /* 20px */
+}
+
+.dark {
+  /* iOS Dark Mode Colors */
+  --bg-primary: #000000;
+  --bg-secondary: #1C1C1E;
+  --bg-tertiary: #2C2C2E;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #8E8E93;
+
+  --accent-blue: #0A84FF;
+  --accent-green: #30D158;
+  --accent-red: #FF453A;
+  --accent-orange: #FF9F0A;
+}
+
+/* Glassmorphism Utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dark .glass {
+  background: rgba(28, 28, 30, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass-card {
+  background: rgba(28, 28, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
