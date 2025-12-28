@@ -125,7 +125,7 @@ export default function Home() {
             <span className="font-bold text-lg tracking-tight text-slate-800">PBB Desa Kemang</span>
           </div>
           <Link href="/login">
-            <Button variant="outline" size="sm" className="rounded-full px-4">Login Admin</Button>
+            <Button variant="outline" size="sm" className="rounded-full px-4 bg-white text-slate-900 border-slate-200 hover:bg-slate-100 font-medium">Login Admin</Button>
           </Link>
         </div>
       </header>
