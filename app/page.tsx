@@ -68,6 +68,33 @@ export default function Home() {
 
       setIsSearching(true);
       try {
+        // 1. Search by Citizen Name
+        const { data: nameHits } = await supabase
+          .from('citizens')
+          .select('id')
+          .ilike('name', `%${query}%`)
+          .limit(20)
+
+        // 2. Search by Asset Fields (NOP, Original Name, Blok, Persil)
+        const { data: assetHits } = await supabase
+          .from('tax_objects')
+          .select('citizen_id')
+          .or(`nop.ilike.%${query}%,original_name.ilike.%${query}%,blok.ilike.%${query}%,persil.ilike.%${query}%`)
+          .limit(20)
+
+        // 3. Combine IDs
+        const ids = new Set<string>()
+        nameHits?.forEach(x => ids.add(x.id))
+        assetHits?.forEach(x => ids.add(x.citizen_id))
+        const uniqueIds = Array.from(ids)
+
+        if (uniqueIds.length === 0) {
+          setResults([])
+          setIsSearching(false)
+          return
+        }
+
+        // 4. Fetch Full Data for these IDs
         const { data } = await supabase
           .from('citizens')
           .select(`
@@ -78,25 +105,42 @@ export default function Home() {
               location_name,
               amount_due,
               status,
-              year
+              year,
+              original_name,
+              blok,
+              persil
             )
           `)
-          .ilike('name', `%${query}%`)
-          .limit(10);
+          .in('id', uniqueIds)
+          .limit(20);
 
         const flats: any[] = [];
         data?.forEach((c: any) => {
           if (c.tax_objects?.length > 0) {
             c.tax_objects.forEach((t: any) => {
-              flats.push({
-                name: c.name,
-                address: c.address,
-                nop: t.nop,
-                loc: t.location_name,
-                year: t.year || '-',
-                amount: t.amount_due,
-                status: t.status
-              })
+              // Client-side Filter: Only show assets that match OR if the Citizen matched
+              const matchesName = c.name.toLowerCase().includes(query.toLowerCase())
+              const matchesAsset =
+                t.nop.includes(query) ||
+                t.original_name?.toLowerCase().includes(query.toLowerCase()) ||
+                t.blok?.toLowerCase().includes(query.toLowerCase()) ||
+                t.persil?.toLowerCase().includes(query.toLowerCase());
+
+              if (matchesName || matchesAsset) {
+                flats.push({
+                  name: c.name,
+                  address: c.address,
+                  nop: t.nop,
+                  loc: t.location_name,
+                  year: t.year || '-',
+                  amount: t.amount_due,
+                  status: t.status,
+                  // Extra fields for highlighting
+                  original_name: t.original_name,
+                  blok: t.blok,
+                  persil: t.persil
+                })
+              }
             })
           }
         });
@@ -154,7 +198,7 @@ export default function Home() {
               <Search className="text-slate-400 ml-3" />
               <input
                 className="flex-1 bg-transparent border-none outline-none text-lg placeholder:text-slate-400 h-12"
-                placeholder="Ketik Nama Wajib Pajak..."
+                placeholder="Ketik Nama, NOP, Blok, Persil, atau Nama Asal..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -170,9 +214,25 @@ export default function Home() {
                   <div key={i} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex justify-between items-center group cursor-default">
                     <div className="flex flex-col">
                       <span className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{r.name}</span>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
                         <span className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600">{r.nop}</span>
                         <span className="flex items-center gap-1"><MapPin size={10} /> {r.loc} • {r.year}</span>
+                      </div>
+
+                      {/* Search Matches */}
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {r.blok && r.blok.toLowerCase().includes(query.toLowerCase()) && (
+                          <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">Blok {r.blok}</Badge>
+                        )}
+                        {r.persil && r.persil.toLowerCase().includes(query.toLowerCase()) && (
+                          <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">Persil {r.persil}</Badge>
+                        )}
+                        {r.original_name && r.original_name.toLowerCase().includes(query.toLowerCase()) && (
+                          <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">Ex: {r.original_name}</Badge>
+                        )}
+                        {r.nop.includes(query) && (
+                          <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">NOP</Badge>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
