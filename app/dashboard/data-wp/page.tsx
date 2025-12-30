@@ -210,9 +210,10 @@ export default function DataWPPage() {
                 alert(`Import Selesai!\n- Warga Baru: ${newCitizenCount}\n- Warga Lama (Match): ${matchedCitizenCount}\n- Total Aset/Kikitir Diproses: ${newAssetCount}`)
                 fetchData() // Refresh list
 
-            } catch (err: any) {
+            } catch (err) {
                 console.error("Import Error:", err)
-                alert("Gagal import file: " + err.message)
+                const msg = err instanceof Error ? err.message : String(err)
+                alert("Gagal import file: " + msg)
             } finally {
                 setIsImporting(false)
                 if (fileInputRef.current) fileInputRef.current.value = "" // Reset input
@@ -271,8 +272,9 @@ export default function DataWPPage() {
                 }))
                 setLocalData(mapped)
             }
-        } catch (err: any) {
-            console.error("Error fetching data:", err.message)
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            console.error("Error fetching data:", msg)
         } finally {
             setIsLoading(false)
         }
@@ -373,8 +375,9 @@ export default function DataWPPage() {
             setIsModalOpen(false)
             resetForm()
 
-        } catch (err: any) {
-            alert("Terjadi kesalahan database: " + err.message)
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            alert("Terjadi kesalahan database: " + msg)
         } finally {
             setIsLoading(false)
         }
@@ -398,8 +401,9 @@ export default function DataWPPage() {
             await fetchData()
             setIsDeleteModalOpen(false)
             setDeleteTarget(null)
-        } catch (err: any) {
-            alert("Gagal menghapus: " + err.message)
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            alert("Gagal menghapus: " + msg)
         } finally {
             setIsLoading(false)
         }
