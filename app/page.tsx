@@ -128,6 +128,7 @@ export default function Home() {
 
               if (matchesName || matchesAsset) {
                 flats.push({
+                  id: c.id, // Add ID for filtering
                   name: c.name,
                   address: c.address,
                   nop: t.nop,
