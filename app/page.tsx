@@ -94,11 +94,11 @@ export default function Home() {
           return
         }
 
-        // 4. Fetch Full Data for these IDs
+        // 4. Fetch Full Data for these IDs (QUERY BERSIH - TANPA KOMENTAR DI DALAM STRING)
         const { data } = await supabase
           .from('citizens')
           .select(`
-            id,              // <--- CEK INI: Pastikan 'id' ikut dipanggil di sini!
+            id,
             name,
             address,
             tax_objects (
@@ -119,7 +119,7 @@ export default function Home() {
         data?.forEach((c: any) => {
           if (c.tax_objects?.length > 0) {
             c.tax_objects.forEach((t: any) => {
-              // Filter Pencarian Client-side
+              // Client-side Filter
               const matchesName = c.name.toLowerCase().includes(query.toLowerCase())
               const matchesAsset =
                 t.nop.includes(query) ||
@@ -129,7 +129,7 @@ export default function Home() {
 
               if (matchesName || matchesAsset) {
                 flats.push({
-                  id: c.id, // ID ini hanya akan ada isinya jika di .select() atas sudah ditulis 'id'
+                  id: c.id, // ID sekarang sudah tersedia karena ada di select atas
                   name: c.name,
                   address: c.address,
                   nop: t.nop,
@@ -140,7 +140,6 @@ export default function Home() {
                   original_name: t.original_name,
                   blok: t.blok,
                   persil: t.persil,
-                  // Siapkan tempat kosong untuk data pemilik lain
                   other_owners: []
                 })
               }
@@ -151,7 +150,7 @@ export default function Home() {
         // 5. Fetch Shared NOP Info (FIXED LOGIC)
         const resultNops = flats.map(f => f.nop);
         if (resultNops.length > 0) {
-          // A. Ambil semua pemilik dari NOP yang tampil
+          // A. Ambil detail NOP dan pemiliknya
           const { data: sharedObjects } = await supabase
             .from('tax_objects')
             .select(`
@@ -166,14 +165,13 @@ export default function Home() {
             .in('nop', resultNops);
 
           if (sharedObjects && sharedObjects.length > 0) {
-            // B. Kelompokkan pemilik berdasarkan NOP
+            // B. Grouping by NOP
             const nopMap: Record<string, any[]> = {};
 
             sharedObjects.forEach((obj: any) => {
               if (obj.citizens) {
                 if (!nopMap[obj.nop]) nopMap[obj.nop] = [];
 
-                // Masukkan data ke Map
                 nopMap[obj.nop].push({
                   id: obj.citizens.id,
                   name: obj.citizens.name,
@@ -183,14 +181,12 @@ export default function Home() {
               }
             });
 
-            // C. Tempelkan ke data utama (flats) dengan Filter
+            // C. Attach to flats & Filter user sendiri
             flats.forEach(f => {
               if (nopMap[f.nop]) {
-                // LOGIKA UTAMA:
-                // Ambil semua pemilik NOP ini, TAPI buang (filter) yang ID-nya sama dengan ID orang yang sedang ditampilkan
+                // Filter: Buang data jika ID-nya sama dengan ID orang yang sedang ditampilkan
                 const others = nopMap[f.nop].filter((o: any) => String(o.id) !== String(f.id));
 
-                // Jika setelah dibuang masih ada sisa (berarti ada orang lain), baru tampilkan
                 if (others.length > 0) {
                   f.other_owners = others;
                 }
