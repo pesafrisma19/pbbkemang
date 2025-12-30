@@ -161,14 +161,20 @@ export default function Home() {
           const nopMap: Record<string, string[]> = {};
           sharedData?.forEach((item: any) => {
             if (!nopMap[item.nop]) nopMap[item.nop] = [];
-            if (item.citizens?.name) nopMap[item.nop].push(item.citizens.name);
+            // Handle potential array or object for joined relation
+            const cName = Array.isArray(item.citizens) ? item.citizens[0]?.name : item.citizens?.name;
+            if (cName) nopMap[item.nop].push(cName);
           });
 
           // Attach to flats
           flats.forEach(f => {
             if (nopMap[f.nop]) {
-              // Filter out current name to see "other" owners
-              f.owners = nopMap[f.nop].filter(n => n !== f.name);
+              // Filter out current name (case insensitive/trimmed)
+              const currentName = f.name.trim().toLowerCase();
+              f.owners = nopMap[f.nop].filter(n => n.trim().toLowerCase() !== currentName);
+
+              // Remove duplicates
+              f.owners = Array.from(new Set(f.owners));
             }
           });
         }
