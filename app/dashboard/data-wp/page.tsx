@@ -917,6 +917,14 @@ export default function DataWPPage() {
                                     </div>
                                 ))}
                             </div>
+
+                            {/* Total Summary */}
+                            <div className="bg-muted/50 p-3 rounded-lg flex items-center justify-between border">
+                                <span className="font-medium text-sm">Total Pajak (Gapok)</span>
+                                <span className="font-bold font-mono text-sm">
+                                    Rp {nopOwnersMap[detailNop].reduce((sum, owner) => sum + owner.tax, 0).toLocaleString('id-ID')}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 ) : (
