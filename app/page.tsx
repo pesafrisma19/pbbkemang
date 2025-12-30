@@ -149,34 +149,47 @@ export default function Home() {
         // 5. Fetch Shared NOP Info
         const resultNops = flats.map(f => f.nop);
         if (resultNops.length > 0) {
-          const { data: sharedData } = await supabase
+          // A. Get all tax objects for these NOPs (to find other citizen_ids)
+          const { data: sharedObjects } = await supabase
             .from('tax_objects')
-            .select(`
-                    nop,
-                    citizens (name)
-                `)
+            .select('nop, citizen_id')
             .in('nop', resultNops);
 
-          // Build Map: NOP -> Owner Names
-          const nopMap: Record<string, string[]> = {};
-          sharedData?.forEach((item: any) => {
-            if (!nopMap[item.nop]) nopMap[item.nop] = [];
-            // Handle potential array or object for joined relation
-            const cName = Array.isArray(item.citizens) ? item.citizens[0]?.name : item.citizens?.name;
-            if (cName) nopMap[item.nop].push(cName);
-          });
+          if (sharedObjects && sharedObjects.length > 0) {
+            // B. Get all relevant citizen IDs
+            const ownerIds = Array.from(new Set(sharedObjects.map((o: any) => o.citizen_id)));
 
-          // Attach to flats
-          flats.forEach(f => {
-            if (nopMap[f.nop]) {
-              // Filter out current name (case insensitive/trimmed)
-              const currentName = f.name.trim().toLowerCase();
-              f.owners = nopMap[f.nop].filter(n => n.trim().toLowerCase() !== currentName);
+            // C. Fetch Names for these IDs
+            const { data: ownerNames } = await supabase
+              .from('citizens')
+              .select('id, name')
+              .in('id', ownerIds);
 
-              // Remove duplicates
-              f.owners = Array.from(new Set(f.owners));
-            }
-          });
+            // D. Build ID -> Name Map
+            const idNameMap: Record<string, string> = {};
+            ownerNames?.forEach((c: any) => {
+              idNameMap[c.id] = c.name;
+            });
+
+            // E. Build NOP -> Names Map
+            const nopMap: Record<string, string[]> = {};
+            sharedObjects.forEach((obj: any) => {
+              const name = idNameMap[obj.citizen_id];
+              if (name) {
+                if (!nopMap[obj.nop]) nopMap[obj.nop] = [];
+                nopMap[obj.nop].push(name);
+              }
+            });
+
+            // F. Attach to flats
+            flats.forEach(f => {
+              if (nopMap[f.nop]) {
+                const currentName = f.name.trim().toLowerCase();
+                f.owners = nopMap[f.nop].filter(n => n.trim().toLowerCase() !== currentName);
+                f.owners = Array.from(new Set(f.owners)); // Dedupe
+              }
+            });
+          }
         }
 
         setResults(flats);
