@@ -219,16 +219,22 @@ export default function Home() {
                         <span className="flex items-center gap-1"><MapPin size={10} /> {r.loc} • {r.year}</span>
                       </div>
 
-                      {/* Search Matches */}
+                      {/* Search Matches & Details */}
                       <div className="flex flex-wrap gap-1 mt-1.5">
-                        {r.blok && r.blok.toLowerCase().includes(query.toLowerCase()) && (
-                          <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">Blok {r.blok}</Badge>
+                        {r.blok && (
+                          <Badge variant="outline" className={`text-[10px] h-4 px-1 ${r.blok.toLowerCase().includes(query.toLowerCase()) ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                            Blok {r.blok}
+                          </Badge>
                         )}
-                        {r.persil && r.persil.toLowerCase().includes(query.toLowerCase()) && (
-                          <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">Persil {r.persil}</Badge>
+                        {r.persil && (
+                          <Badge variant="outline" className={`text-[10px] h-4 px-1 ${r.persil.toLowerCase().includes(query.toLowerCase()) ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                            Persil {r.persil}
+                          </Badge>
                         )}
-                        {r.original_name && r.original_name.toLowerCase().includes(query.toLowerCase()) && (
-                          <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">Ex: {r.original_name}</Badge>
+                        {r.original_name && (
+                          <Badge variant="outline" className={`text-[10px] h-4 px-1 ${r.original_name.toLowerCase().includes(query.toLowerCase()) ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                            Ex: {r.original_name}
+                          </Badge>
                         )}
                         {r.nop.includes(query) && (
                           <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">NOP</Badge>
