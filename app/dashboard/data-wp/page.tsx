@@ -77,7 +77,12 @@ export default function DataWPPage() {
 
     const filteredData = localData.filter(wp =>
         wp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        wp.assets.some(a => a.nop.includes(searchTerm))
+        wp.assets.some(a =>
+            a.nop.includes(searchTerm) ||
+            (a.original_name && a.original_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (a.persil && a.persil.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (a.blok && a.blok.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
     )
 
     const totalPages = Math.ceil(filteredData.length / itemsPerPage)
@@ -608,7 +613,7 @@ export default function DataWPPage() {
 
             <div className="glass-card p-4 rounded-xl flex items-center gap-4">
                 <Input
-                    placeholder="Cari Nama atau NOP..."
+                    placeholder="Cari Nama, NOP, Blok, Persil, atau Nama Asal..."
                     icon={Search}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
