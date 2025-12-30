@@ -138,12 +138,41 @@ export default function Home() {
                   // Extra fields for highlighting
                   original_name: t.original_name,
                   blok: t.blok,
-                  persil: t.persil
+                  persil: t.persil,
+                  owners: [] as string[] // Placeholder
                 })
               }
             })
           }
         });
+
+        // 5. Fetch Shared NOP Info
+        const resultNops = flats.map(f => f.nop);
+        if (resultNops.length > 0) {
+          const { data: sharedData } = await supabase
+            .from('tax_objects')
+            .select(`
+                    nop,
+                    citizens (name)
+                `)
+            .in('nop', resultNops);
+
+          // Build Map: NOP -> Owner Names
+          const nopMap: Record<string, string[]> = {};
+          sharedData?.forEach((item: any) => {
+            if (!nopMap[item.nop]) nopMap[item.nop] = [];
+            if (item.citizens?.name) nopMap[item.nop].push(item.citizens.name);
+          });
+
+          // Attach to flats
+          flats.forEach(f => {
+            if (nopMap[f.nop]) {
+              // Filter out current name to see "other" owners
+              f.owners = nopMap[f.nop].filter(n => n !== f.name);
+            }
+          });
+        }
+
         setResults(flats);
       } catch (err) {
         console.error(err)
