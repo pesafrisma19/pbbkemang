@@ -277,12 +277,12 @@ export default function PembayaranPage() {
                             {/* List of Tax Objects */}
                             <div className="divide-y">
                                 {group.tax_objects.map((item) => (
-                                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-green-100/80 dark:bg-green-900/40 text-green-900 dark:text-green-100' : 'hover:bg-muted/20'}`}>
+                                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-green-50/50' : 'hover:bg-muted/20'}`}>
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                             {/* Item Details */}
                                             <div className="flex-1 space-y-1">
                                                 <div className="flex items-center gap-2 text-sm font-medium">
-                                                    <span className="text-xs font-mono text-muted-foreground">{item.nop}</span>
+
                                                     <span>{item.location}</span>
                                                     <span className="text-muted-foreground">• Thn {item.year}</span>
                                                 </div>
@@ -294,16 +294,7 @@ export default function PembayaranPage() {
                                                             Ex: <span className="text-foreground/80 font-medium">{item.original_name}</span>
                                                         </span>
                                                     )}
-                                                    {item.blok && (
-                                                        <span>
-                                                            Blok: {item.blok}
-                                                        </span>
-                                                    )}
-                                                    {item.persil && (
-                                                        <span>
-                                                            Persil: {item.persil}
-                                                        </span>
-                                                    )}
+
                                                 </div>
                                             </div>
 
@@ -312,7 +303,7 @@ export default function PembayaranPage() {
                                                 <div className="text-right min-w-[100px]">
                                                     <p className="font-bold text-sm">Rp {Number(item.amount).toLocaleString('id-ID')}</p>
                                                     {item.paid && item.paidAt && (
-                                                        <div className="text-[10px] text-green-600 dark:text-green-400 flex items-center justify-end gap-1">
+                                                        <div className="text-[10px] text-green-600 flex items-center justify-end gap-1">
                                                             <CalendarDays size={10} />
                                                             {formatDate(item.paidAt)}
                                                         </div>
