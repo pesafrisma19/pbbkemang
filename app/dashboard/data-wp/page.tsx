@@ -18,6 +18,9 @@ type Asset = {
     tax: number;
     year: number; // New
     status: 'paid' | 'unpaid';
+    original_name?: string; // New: Nama Asal
+    persil?: string; // New: Persil
+    blok?: string; // New: Blok
 }
 
 type WPData = {
@@ -53,7 +56,10 @@ export default function DataWPPage() {
     })
 
     const [formAssets, setFormAssets] = useState<Asset[]>([])
-    const [newAsset, setNewAsset] = useState<Asset>({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid' })
+    const [newAsset, setNewAsset] = useState<Asset>({
+        nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid',
+        original_name: "", persil: "", blok: ""
+    })
     const [showAssetForm, setShowAssetForm] = useState(false)
 
     // Delete Confirmation State
@@ -86,11 +92,12 @@ export default function DataWPPage() {
 
     const handleDownloadTemplate = () => {
         const headers = [
-            "NAMA_WP", "ALAMAT", "NIK", "WHATSAPP", "NOP", "LOKASI_OBJEK", "NOMINAL_PAJAK", "TAHUN_PAJAK", "STATUS_BAYAR"
+            "NAMA_WP", "ALAMAT", "NIK", "WHATSAPP", "NOP", "LOKASI_OBJEK", "NOMINAL_PAJAK", "TAHUN_PAJAK", "STATUS_BAYAR",
+            "NAMA_ASAL", "PERSIL", "BLOK"
         ]
         const sample = [
-            ["Asep Saepudin", "Dusun Manis RT 01", "3204...", "0812...", "32.04.123...", "Sawah Lega", 50000, 2024, "BELUM"],
-            ["Budi Santoso", "Dusun Pahing RT 02", "3204...", "0857...", "32.04.456...", "Rumah Tinggal", 125000, 2024, "LUNAS"]
+            ["Asep Saepudin", "Dusun Manis RT 01", "3204...", "0812...", "32.04.123...", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
+            ["Budi Santoso", "Dusun Pahing RT 02", "3204...", "0857...", "32.04.456...", "Rumah Tinggal", 125000, 2024, "LUNAS", "-", "12b", "005"]
         ]
 
         const wb = XLSX.utils.book_new()
@@ -183,14 +190,16 @@ export default function DataWPPage() {
                         const nominal = Number(row['NOMINAL_PAJAK']) || 0
 
                         await supabase
-                            .from('tax_objects')
                             .upsert({
                                 nop: nop,
                                 citizen_id: citizenId,
                                 location_name: row['LOKASI_OBJEK'] || 'Tanah/Bangunan',
                                 amount_due: nominal,
                                 year: Number(row['TAHUN_PAJAK']) || new Date().getFullYear(),
-                                status: status
+                                status: status,
+                                original_name: row['NAMA_ASAL'] || null,
+                                persil: row['PERSIL'] ? String(row['PERSIL']) : null,
+                                blok: row['BLOK'] ? String(row['BLOK']) : null
                             }, { onConflict: 'nop' })
 
                         newAssetCount++
@@ -230,7 +239,10 @@ export default function DataWPPage() {
                         location_name,
                         amount_due,
                         year,
-                        status
+                        status,
+                        original_name,
+                        persil,
+                        blok
                     )
                 `)
                 .order('created_at', { ascending: false });
@@ -251,7 +263,10 @@ export default function DataWPPage() {
                         loc: obj.location_name,
                         tax: obj.amount_due,
                         year: obj.year || new Date().getFullYear(),
-                        status: obj.status
+                        status: obj.status,
+                        original_name: obj.original_name,
+                        persil: obj.persil,
+                        blok: obj.blok
                     })) || []
                 }))
                 setLocalData(mapped)
@@ -272,7 +287,7 @@ export default function DataWPPage() {
     const resetForm = () => {
         setFormData({ name: "", address: "", nik: "", whatsapp: "" })
         setFormAssets([])
-        setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid' })
+        setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
         setShowAssetForm(false)
         setEditingId(null)
     }
@@ -341,7 +356,10 @@ export default function DataWPPage() {
                     location_name: a.loc,
                     amount_due: a.tax,
                     status: a.status || 'unpaid',
-                    year: new Date().getFullYear()
+                    year: new Date().getFullYear(),
+                    original_name: a.original_name,
+                    persil: a.persil,
+                    blok: a.blok
                 }))
 
                 const { error: assetError } = await supabase
@@ -462,7 +480,12 @@ export default function DataWPPage() {
                                 <p className="text-sm font-medium">
                                     {asset.loc} <span className="text-muted-foreground font-normal text-xs">• Thn {asset.year}</span>
                                 </p>
-                                <p className="text-xs font-mono text-muted-foreground">{asset.nop}</p>
+                                <p className="text-xs font-mono text-muted-foreground">
+                                    {asset.nop}
+                                    {asset.blok && <span className="ml-2 font-sans bg-slate-100 px-1 rounded">Blok {asset.blok}</span>}
+                                    {asset.persil && <span className="ml-1 font-sans bg-slate-100 px-1 rounded">Persil {asset.persil}</span>}
+                                </p>
+                                {asset.original_name && <p className="text-[10px] text-muted-foreground italic">Ex: {asset.original_name}</p>}
                             </div>
                             <div className="flex items-center justify-between sm:justify-end gap-3 flex-1">
                                 <span className="text-sm font-semibold">Rp {asset.tax.toLocaleString('id-ID')}</span>
@@ -634,8 +657,14 @@ export default function DataWPPage() {
                             {formAssets.map((asset, idx) => (
                                 <div key={idx} className="flex items-center justify-between bg-muted/50 p-2 rounded-lg text-sm group hover:bg-muted transition-colors">
                                     <div className="flex-1">
-                                        <div className="font-medium">{asset.loc}</div>
-                                        <div className="text-xs text-muted-foreground">{asset.nop}</div>
+                                        <div className="font-medium">
+                                            {asset.loc} <span className="text-xs text-muted-foreground font-normal">({asset.year})</span>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground font-mono">
+                                            {asset.nop}
+                                            {asset.blok && ` • Blok ${asset.blok}`}
+                                            {asset.persil && ` • Persil ${asset.persil}`}
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="font-bold">Rp {Number(asset.tax).toLocaleString('id-ID')}</span>
@@ -691,10 +720,45 @@ export default function DataWPPage() {
                                         <label className="text-xs font-medium">Tahun Pajak</label>
                                         <Input
                                             type="number"
-                                            className="h-9 text-sm w-1/3"
+                                            className="h-9 text-sm w-full"
                                             value={newAsset.year}
                                             onChange={(e) => setNewAsset({ ...newAsset, year: Number(e.target.value) })}
                                         />
+                                    </div>
+
+                                    {/* New Fields */}
+                                    <div className="space-y-2 col-span-2 border-t pt-2 mt-1">
+                                        <p className="text-xs font-semibold text-muted-foreground">Detail Tambahan (Opsional)</p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-medium">Nama Asal/Sebelumnya</label>
+                                        <Input
+                                            placeholder="Nama pemilik lama..."
+                                            className="h-9 text-sm"
+                                            value={newAsset.original_name || ""}
+                                            onChange={(e) => setNewAsset({ ...newAsset, original_name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 col-span-1">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-medium">Blok</label>
+                                            <Input
+                                                placeholder="001"
+                                                className="h-9 text-sm"
+                                                value={newAsset.blok || ""}
+                                                onChange={(e) => setNewAsset({ ...newAsset, blok: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-medium">Persil</label>
+                                            <Input
+                                                placeholder="12a"
+                                                className="h-9 text-sm"
+                                                value={newAsset.persil || ""}
+                                                onChange={(e) => setNewAsset({ ...newAsset, persil: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 pt-1">
