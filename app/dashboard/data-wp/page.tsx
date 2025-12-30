@@ -61,6 +61,7 @@ export default function DataWPPage() {
         original_name: "", persil: "", blok: ""
     })
     const [showAssetForm, setShowAssetForm] = useState(false)
+    const [useFastNop, setUseFastNop] = useState(true)
 
     // Delete Confirmation State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -201,7 +202,7 @@ export default function DataWPPage() {
                                 original_name: row['NAMA_ASAL'] || null,
                                 persil: row['PERSIL'] ? String(row['PERSIL']) : null,
                                 blok: row['BLOK'] ? String(row['BLOK']) : null
-                            }, { onConflict: 'nop' })
+                            }, { onConflict: 'nop, citizen_id' })
 
                         newAssetCount++
                         successCount++
@@ -585,6 +586,14 @@ export default function DataWPPage() {
                 />
             </div>
 
+            {/* Legend / Info */}
+            <div className="flex items-center gap-4 px-2 text-xs text-muted-foreground pb-2">
+                <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span>1 NOP Banyak Pemilik (Shared)</span>
+                </div>
+            </div>
+
             {items.length === 0 && !isLoading ? (
                 <div className="text-center py-12 text-muted-foreground">
                     Belum ada data. Silakan tambah data baru.
@@ -665,8 +674,14 @@ export default function DataWPPage() {
                                         <div className="font-medium">
                                             {asset.loc} <span className="text-xs text-muted-foreground font-normal">({asset.year})</span>
                                         </div>
-                                        <div className="text-xs text-muted-foreground font-mono">
+                                        <div className="text-xs text-muted-foreground font-mono flex items-center gap-1">
                                             {asset.nop}
+                                            {/* Shared Indicator (Mock logic or check duplicates in local list) */}
+                                            {formAssets.filter(a => a.nop === asset.nop).length > 1 && (
+                                                <Badge variant="outline" className="h-4 px-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">
+                                                    Shared
+                                                </Badge>
+                                            )}
                                             {asset.blok && ` • Blok ${asset.blok}`}
                                             {asset.persil && ` • Persil ${asset.persil}`}
                                         </div>
@@ -694,13 +709,47 @@ export default function DataWPPage() {
                         {showAssetForm && (
                             <div className="bg-muted/30 p-4 rounded-xl space-y-3 border border-accent-blue/30 animate-in fade-in zoom-in-95">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-medium">Nomor Objek Pajak (NOP)</label>
-                                    <Input
-                                        placeholder="32.04.xxx..."
-                                        className="h-9 text-sm"
-                                        value={newAsset.nop}
-                                        onChange={(e) => setNewAsset({ ...newAsset, nop: e.target.value })}
-                                    />
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-medium">Nomor Objek Pajak (NOP)</label>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 text-[10px] px-2"
+                                            onClick={() => setUseFastNop(!useFastNop)}
+                                        >
+                                            {useFastNop ? "Mode Cepat" : "Mode Manual"}
+                                        </Button>
+                                    </div>
+                                    <div className="relative">
+                                        {useFastNop ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="bg-muted px-2 py-1.5 rounded border text-sm text-muted-foreground font-mono select-none">
+                                                    32.05.130.005.
+                                                </div>
+                                                <Input
+                                                    placeholder="0000.0"
+                                                    className="h-9 text-sm font-mono flex-1"
+                                                    value={newAsset.nop.replace('32.05.130.005.', '')}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value
+                                                        setNewAsset({ ...newAsset, nop: `32.05.130.005.${val}` })
+                                                    }}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <Input
+                                                placeholder="32.05.xxx..."
+                                                className="h-9 text-sm"
+                                                value={newAsset.nop}
+                                                onChange={(e) => setNewAsset({ ...newAsset, nop: e.target.value })}
+                                            />
+                                        )}
+                                    </div>
+                                    {useFastNop && (
+                                        <p className="text-[10px] text-muted-foreground">
+                                            *Otomatis menambahkan prefix 32.05.130.005.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-2">
