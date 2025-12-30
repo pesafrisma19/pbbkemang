@@ -38,8 +38,8 @@ export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) 
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in"
                 onClick={onClose}
             />
-            <div className="relative z-50 w-full max-w-lg overflow-hidden rounded-2xl border bg-background text-foreground shadow-lg animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between border-b px-6 py-4">
+            <div className="relative z-50 w-full max-w-lg rounded-2xl border bg-background text-foreground shadow-lg animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between border-b px-6 py-4 flex-shrink-0">
                     <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
                     <Button
                         variant="ghost"
@@ -51,11 +51,11 @@ export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) 
                         <span className="sr-only">Close</span>
                     </Button>
                 </div>
-                <div className="p-6">
+                <div className="p-6 overflow-y-auto w-full">
                     {children}
                 </div>
                 {footer && (
-                    <div className="flex items-center justify-end gap-2 border-t px-6 py-4 bg-muted/20">
+                    <div className="flex items-center justify-end gap-2 border-t px-6 py-4 bg-muted/20 flex-shrink-0">
                         {footer}
                     </div>
                 )}

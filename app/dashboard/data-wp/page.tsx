@@ -607,7 +607,7 @@ export default function DataWPPage() {
                     </>
                 }
             >
-                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div className="space-y-4 pr-2">
                     <div className="space-y-4 border-b pb-4">
                         <h3 className="font-semibold text-sm text-accent-blue">I. Data Diri Warga</h3>
                         <div className="space-y-2">
