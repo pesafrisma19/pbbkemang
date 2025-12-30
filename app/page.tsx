@@ -147,47 +147,52 @@ export default function Home() {
           }
         });
 
-        // 5. Fetch Shared NOP Info
+        // 5. Fetch Shared NOP Info (Updated: Include Address & Amount)
         const resultNops = flats.map(f => f.nop);
         if (resultNops.length > 0) {
-          // A. Get all tax objects for these NOPs (to find other citizen_ids)
+          // A. Get all tax objects for these NOPs + Join Citizen Data
           const { data: sharedObjects } = await supabase
             .from('tax_objects')
-            .select('nop, citizen_id')
+            .select(`
+              nop,
+              amount_due,
+              citizen_id,
+              citizens (
+                id,
+                name,
+                address
+              )
+            `)
             .in('nop', resultNops);
 
           if (sharedObjects && sharedObjects.length > 0) {
-            // B. Get all relevant citizen IDs
-            const ownerIds = Array.from(new Set(sharedObjects.map((o: any) => o.citizen_id)));
+            // B. Group by NOP
+            const nopMap: Record<string, any[]> = {};
 
-            // C. Fetch Names for these IDs
-            const { data: ownerNames } = await supabase
-              .from('citizens')
-              .select('id, name')
-              .in('id', ownerIds);
-
-            // D. Build ID -> Name Map
-            const idNameMap: Record<string, string> = {};
-            ownerNames?.forEach((c: any) => {
-              idNameMap[c.id] = c.name;
-            });
-
-            // E. Build NOP -> Names Map
-            const nopMap: Record<string, string[]> = {};
             sharedObjects.forEach((obj: any) => {
-              const name = idNameMap[obj.citizen_id];
-              if (name) {
+              // Pastikan data citizen ada
+              if (obj.citizens) {
                 if (!nopMap[obj.nop]) nopMap[obj.nop] = [];
-                nopMap[obj.nop].push(name);
+
+                nopMap[obj.nop].push({
+                  id: obj.citizens.id,
+                  name: obj.citizens.name,
+                  address: obj.citizens.address || '-', // Handle jika alamat kosong
+                  amount: obj.amount_due
+                });
               }
             });
 
-            // F. Attach to flats
+            // C. Attach to flats (Filter out the current displayed person)
             flats.forEach(f => {
               if (nopMap[f.nop]) {
-                const currentName = f.name.trim().toLowerCase();
-                f.owners = nopMap[f.nop].filter(n => n.trim().toLowerCase() !== currentName);
-                f.owners = Array.from(new Set(f.owners)); // Dedupe
+                // Filter agar nama yang sedang tampil tidak muncul lagi di daftar "Lainnya"
+                const others = nopMap[f.nop].filter((o: any) => o.id !== f.id);
+
+                // Simpan array object lengkap, bukan cuma string nama
+                if (others.length > 0) {
+                  f.other_owners = others;
+                }
               }
             });
           }
@@ -289,15 +294,36 @@ export default function Home() {
                           <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">NOP</Badge>
                         )}
                       </div>
-                      {/* === TAMBAHKAN KODE INI DI SINI === */}
-                      {r.owners && r.owners.length > 0 && (
-                        <div className="mt-2 text-[10px] bg-amber-50 border border-amber-100 p-2 rounded-lg text-amber-800 animate-in fade-in">
-                          <div className="font-semibold flex items-center gap-1">
+                      {/* Tampilan Info NOP Ganda Minimalis */}
+                      {r.other_owners && r.other_owners.length > 0 && (
+                        <div className="mt-3 bg-amber-50 border border-amber-100 rounded-lg overflow-hidden animate-in fade-in">
+                          {/* Header Kecil */}
+                          <div className="px-3 py-1.5 bg-amber-100/50 border-b border-amber-100 flex items-center gap-1.5">
                             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
-                            NOP ini juga tercatat atas nama:
+                            <span className="text-[10px] font-semibold text-amber-800 uppercase tracking-wide">
+                              Data Lain pada NOP ini:
+                            </span>
                           </div>
-                          <div className="mt-0.5 ml-2.5 text-slate-600">
-                            {r.owners.join(", ")}
+
+                          {/* List Minimalis */}
+                          <div className="flex flex-col divide-y divide-amber-200/50">
+                            {r.other_owners.map((owner: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center px-3 py-2 hover:bg-amber-100/30 transition-colors">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-[11px] font-bold text-slate-700 leading-none">
+                                    {owner.name}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 flex items-center gap-1 leading-none">
+                                    <MapPin size={8} /> {owner.address}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[11px] font-mono font-medium text-slate-600 bg-white/50 px-1.5 py-0.5 rounded border border-amber-100">
+                                    Rp {owner.amount.toLocaleString('id-ID')}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
