@@ -277,30 +277,30 @@ export default function PembayaranPage() {
                             {/* List of Tax Objects */}
                             <div className="divide-y">
                                 {group.tax_objects.map((item) => (
-                                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-green-50/50 dark:bg-green-900/20' : 'hover:bg-muted/20'}`}>
+                                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-green-50 dark:bg-green-900/20' : 'hover:bg-muted/20'}`}>
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                             {/* Item Details */}
                                             <div className="flex-1 space-y-1">
                                                 <div className="flex items-center gap-2 text-sm font-medium">
                                                     <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
                                                     <span>{item.location}</span>
-                                                    <span className="text-muted-foreground">• Thn {item.year}</span>
+                                                    <span className={`${item.paid ? 'text-green-700/80 dark:text-green-300' : 'text-muted-foreground'}`}>• Thn {item.year}</span>
                                                 </div>
 
                                                 {/* Extra Details: Original Name, Persil, Blok */}
-                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground ml-1">
+                                                <div className={`flex flex-wrap gap-x-4 gap-y-1 text-xs ml-1 ${item.paid ? 'text-green-800 dark:text-green-300' : 'text-muted-foreground'}`}>
                                                     {item.original_name && (
                                                         <span className="flex items-center gap-1">
-                                                            Ex: <span className="text-foreground/80 font-medium">{item.original_name}</span>
+                                                            Ex: <span className="font-medium">{item.original_name}</span>
                                                         </span>
                                                     )}
                                                     {item.blok && (
-                                                        <span className="bg-slate-50 dark:bg-slate-900 px-1.5 rounded border border-slate-100 dark:border-slate-800">
+                                                        <span className={`px-1.5 rounded border ${item.paid ? 'bg-green-100 dark:bg-green-900/50 border-green-200 dark:border-green-800' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800'}`}>
                                                             Blok: {item.blok}
                                                         </span>
                                                     )}
                                                     {item.persil && (
-                                                        <span className="bg-slate-50 dark:bg-slate-900 px-1.5 rounded border border-slate-100 dark:border-slate-800">
+                                                        <span className={`px-1.5 rounded border ${item.paid ? 'bg-green-100 dark:bg-green-900/50 border-green-200 dark:border-green-800' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800'}`}>
                                                             Persil: {item.persil}
                                                         </span>
                                                     )}
@@ -324,7 +324,7 @@ export default function PembayaranPage() {
                                                         checked={item.paid}
                                                         onCheckedChange={() => handleToggle(item.id, item.paid, group.citizen_id)}
                                                     />
-                                                    <span className={`text-[10px] font-bold ${item.paid ? 'text-success' : 'text-muted-foreground'}`}>
+                                                    <span className={`text-[10px] font-bold ${item.paid ? 'text-green-600' : 'text-muted-foreground'}`}>
                                                         {item.paid ? 'LUNAS' : 'BELUM'}
                                                     </span>
                                                 </div>
