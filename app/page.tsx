@@ -289,6 +289,19 @@ export default function Home() {
                           <Badge variant="outline" className="text-[10px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">NOP</Badge>
                         )}
                       </div>
+                      {/* === TAMBAHKAN KODE INI DI SINI === */}
+                      {r.owners && r.owners.length > 0 && (
+                        <div className="mt-2 text-[10px] bg-amber-50 border border-amber-100 p-2 rounded-lg text-amber-800 animate-in fade-in">
+                          <div className="font-semibold flex items-center gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                            NOP ini juga tercatat atas nama:
+                          </div>
+                          <div className="mt-0.5 ml-2.5 text-slate-600">
+                            {r.owners.join(", ")}
+                          </div>
+                        </div>
+                      )}
+                      {/* ================================== */}
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-slate-900">Rp {r.amount.toLocaleString('id-ID')}</div>
