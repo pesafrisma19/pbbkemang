@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input"
 import { Card, CardContent } from "@/components/ui/Card"
 import { Toggle } from "@/components/ui/Toggle"
 import { Button } from "@/components/ui/Button"
-import { Search, MapPin, Loader2, User, CalendarDays, ChevronDown, ChevronUp } from "lucide-react"
+import { Search, MapPin, Loader2, User, CalendarDays, ChevronDown, ChevronUp, Filter } from "lucide-react"
 
 // Grouped Structure
 type TaxObject = {
@@ -30,10 +30,13 @@ type WPGroup = {
     tax_objects: TaxObject[]
 }
 
+type FilterStatus = 'all' | 'unpaid' | 'paid'
+
 export default function PembayaranPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [wpGroups, setWpGroups] = useState<WPGroup[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [filterStatus, setFilterStatus] = useState<FilterStatus>('unpaid') // Default to Unpaid for better UX? Or 'all'. Let's use 'unpaid' as it's most actionable.
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1)
@@ -161,7 +164,14 @@ export default function PembayaranPage() {
 
     // Filter Logic
     const filteredGroups = wpGroups.filter(g => {
+        // 1. Status Filter
+        if (filterStatus === 'unpaid' && g.total_unpaid === 0) return false;
+        if (filterStatus === 'paid' && g.total_unpaid > 0) return false;
+
+        // 2. Search Filter
         const lowerSearch = searchTerm.toLowerCase()
+        if (!lowerSearch) return true; // fast exit
+
         // Match Name or Address
         if (g.name.toLowerCase().includes(lowerSearch)) return true
         if (g.address?.toLowerCase().includes(lowerSearch)) return true
@@ -180,10 +190,10 @@ export default function PembayaranPage() {
         currentPage * itemsPerPage
     )
 
-    // Reset page on search
+    // Reset page on search or filter change
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchTerm])
+    }, [searchTerm, filterStatus])
 
     // Helper to format date
     const formatDate = (dateString: string | null) => {
@@ -199,15 +209,46 @@ export default function PembayaranPage() {
                 <p className="text-muted-foreground">Cari WP dan geser toggle untuk mencatat pelunasan per Kikitir.</p>
             </div>
 
-            <div className="sticky top-0 z-30 pt-2 pb-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="sticky top-0 z-30 pt-2 pb-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 space-y-3">
+                {/* Search Bar - Removed autoFocus */}
                 <Input
                     placeholder="Scan NOP atau Ketik Nama..."
                     icon={Search}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="shadow-md h-12 text-lg"
-                    autoFocus
                 />
+
+                {/* Filter Tabs */}
+                <div className="flex p-1 bg-muted/50 rounded-lg border w-full sm:w-fit">
+                    <button
+                        onClick={() => setFilterStatus('all')}
+                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filterStatus === 'all'
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:bg-background/50'
+                            }`}
+                    >
+                        Semua
+                    </button>
+                    <button
+                        onClick={() => setFilterStatus('unpaid')}
+                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filterStatus === 'unpaid'
+                            ? 'bg-red-100 text-red-700 shadow-sm border border-red-200'
+                            : 'text-muted-foreground hover:bg-background/50'
+                            }`}
+                    >
+                        Belum Lunas
+                    </button>
+                    <button
+                        onClick={() => setFilterStatus('paid')}
+                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filterStatus === 'paid'
+                            ? 'bg-green-100 text-green-700 shadow-sm border border-green-200'
+                            : 'text-muted-foreground hover:bg-background/50'
+                            }`}
+                    >
+                        Lunas
+                    </button>
+                </div>
             </div>
 
             {isLoading ? (
