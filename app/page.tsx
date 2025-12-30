@@ -98,19 +98,19 @@ export default function Home() {
         const { data } = await supabase
           .from('citizens')
           .select(`
-            name,
-            address,
-            tax_objects (
-              nop,
-              location_name,
-              amount_due,
-              status,
-              year,
-              original_name,
-              blok,
-              persil
-            )
-          `)
+            name,
+            address,
+            tax_objects (
+              nop,
+              location_name,
+              amount_due,
+              status,
+              year,
+              original_name,
+              blok,
+              persil
+            )
+          `)
           .in('id', uniqueIds)
           .limit(20);
 
