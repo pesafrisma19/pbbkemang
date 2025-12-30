@@ -282,7 +282,7 @@ export default function PembayaranPage() {
                                             {/* Item Details */}
                                             <div className="flex-1 space-y-1">
                                                 <div className="flex items-center gap-2 text-sm font-medium">
-                                                    <span className="bg-slate-100 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
+                                                    <span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
                                                     <span>{item.location}</span>
                                                     <span className="text-muted-foreground">• Thn {item.year}</span>
                                                 </div>
@@ -295,12 +295,12 @@ export default function PembayaranPage() {
                                                         </span>
                                                     )}
                                                     {item.blok && (
-                                                        <span className="bg-slate-50 dark:bg-slate-800/50 px-1.5 rounded border border-slate-100 dark:border-slate-700">
+                                                        <span className="bg-slate-50 px-1.5 rounded border border-slate-100">
                                                             Blok: {item.blok}
                                                         </span>
                                                     )}
                                                     {item.persil && (
-                                                        <span className="bg-slate-50 dark:bg-slate-800/50 px-1.5 rounded border border-slate-100 dark:border-slate-700">
+                                                        <span className="bg-slate-50 px-1.5 rounded border border-slate-100">
                                                             Persil: {item.persil}
                                                         </span>
                                                     )}
