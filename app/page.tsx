@@ -147,7 +147,7 @@ export default function Home() {
           }
         });
 
-        // 5. Fetch Shared NOP Info (Updated: Include Address & Amount)
+        // // 5. Fetch Shared NOP Info (FIXED: Filter out current user)
         const resultNops = flats.map(f => f.nop);
         if (resultNops.length > 0) {
           // A. Get all tax objects for these NOPs + Join Citizen Data
@@ -170,26 +170,25 @@ export default function Home() {
             const nopMap: Record<string, any[]> = {};
 
             sharedObjects.forEach((obj: any) => {
-              // Pastikan data citizen ada
               if (obj.citizens) {
                 if (!nopMap[obj.nop]) nopMap[obj.nop] = [];
-
                 nopMap[obj.nop].push({
-                  id: obj.citizens.id,
+                  id: obj.citizens.id, // ID Citizen
                   name: obj.citizens.name,
-                  address: obj.citizens.address || '-', // Handle jika alamat kosong
+                  address: obj.citizens.address || '-',
                   amount: obj.amount_due
                 });
               }
             });
 
-            // C. Attach to flats (Filter out the current displayed person)
+            // C. Attach to flats
             flats.forEach(f => {
               if (nopMap[f.nop]) {
-                // Filter agar nama yang sedang tampil tidak muncul lagi di daftar "Lainnya"
-                const others = nopMap[f.nop].filter((o: any) => o.id !== f.id);
+                // LOGIC FIX:
+                // Filter data: Hanya ambil yang ID-nya BEDA dengan ID citizen yang sedang ditampilkan (f.id)
+                const others = nopMap[f.nop].filter((o: any) => String(o.id) !== String(f.id));
 
-                // Simpan array object lengkap, bukan cuma string nama
+                // Hanya pasang properti 'other_owners' jika benar-benar ada orang LAIN
                 if (others.length > 0) {
                   f.other_owners = others;
                 }
