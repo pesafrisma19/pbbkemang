@@ -277,12 +277,12 @@ export default function PembayaranPage() {
                             {/* List of Tax Objects */}
                             <div className="divide-y">
                                 {group.tax_objects.map((item) => (
-                                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-green-50/50 dark:bg-green-900/20' : 'hover:bg-muted/20'}`}>
+                                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-green-100/80 dark:bg-green-900/40 text-green-900 dark:text-green-100' : 'hover:bg-muted/20'}`}>
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                             {/* Item Details */}
                                             <div className="flex-1 space-y-1">
                                                 <div className="flex items-center gap-2 text-sm font-medium">
-                                                    <span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
+                                                    <span className="text-xs font-mono text-muted-foreground">{item.nop}</span>
                                                     <span>{item.location}</span>
                                                     <span className="text-muted-foreground">• Thn {item.year}</span>
                                                 </div>
@@ -295,12 +295,12 @@ export default function PembayaranPage() {
                                                         </span>
                                                     )}
                                                     {item.blok && (
-                                                        <span className="bg-slate-50 px-1.5 rounded border border-slate-100">
+                                                        <span>
                                                             Blok: {item.blok}
                                                         </span>
                                                     )}
                                                     {item.persil && (
-                                                        <span className="bg-slate-50 px-1.5 rounded border border-slate-100">
+                                                        <span>
                                                             Persil: {item.persil}
                                                         </span>
                                                     )}
