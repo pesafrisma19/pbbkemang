@@ -60,7 +60,8 @@ export default function DataWPPage() {
         nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid',
         original_name: "", persil: "", blok: ""
     })
-    const [nopOwnersMap, setNopOwnersMap] = useState<Record<string, string[]>>({})
+    const [nopOwnersMap, setNopOwnersMap] = useState<Record<string, { name: string, address: string, tax: number }[]>>({})
+    const [detailNop, setDetailNop] = useState<string | null>(null) // For viewing shared details
     const [showAssetForm, setShowAssetForm] = useState(false)
     const [useFastNop, setUseFastNop] = useState(true)
 
@@ -274,11 +275,15 @@ export default function DataWPPage() {
                     })) || []
                 }))
                 // Compute NOP Owners Map
-                const ownersMap: Record<string, string[]> = {}
+                const ownersMap: Record<string, { name: string, address: string, tax: number }[]> = {}
                 mapped.forEach(wp => {
                     wp.assets.forEach(asset => {
                         if (!ownersMap[asset.nop]) ownersMap[asset.nop] = []
-                        ownersMap[asset.nop].push(wp.name)
+                        ownersMap[asset.nop].push({
+                            name: wp.name,
+                            address: wp.address,
+                            tax: asset.tax // Keep track of indiv tax if needed
+                        })
                     })
                 })
                 setNopOwnersMap(ownersMap)
@@ -694,21 +699,19 @@ export default function DataWPPage() {
                                             )}
                                             {/* Global Shared Indicator */}
                                             {nopOwnersMap[asset.nop] && nopOwnersMap[asset.nop].length > 1 && (
-                                                <div className="relative group cursor-help">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault(); // prevent accordion toggle if inside one
+                                                        setDetailNop(asset.nop)
+                                                    }}
+                                                    className="group cursor-pointer hover:opacity-80 transition-opacity"
+                                                    title="Klik untuk lihat detail pemilik"
+                                                >
                                                     <Badge variant="outline" className="h-4 px-1 text-[10px] bg-amber-100 text-amber-700 hover:bg-amber-100 border-none flex items-center gap-1">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                                                        {nopOwnersMap[asset.nop].length} Pemilik
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                                                        {nopOwnersMap[asset.nop].length} Pemilik (Lihat)
                                                     </Badge>
-                                                    {/* Tooltip */}
-                                                    <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-black text-white text-[10px] rounded shadow-lg hidden group-hover:block z-50">
-                                                        <p className="font-semibold mb-1">Dimiliki oleh:</p>
-                                                        <ul className="list-disc pl-3">
-                                                            {nopOwnersMap[asset.nop].map((owner, idx) => (
-                                                                <li key={idx}>{owner}</li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                </div>
+                                                </button>
                                             )}
                                             {asset.blok && ` • Blok ${asset.blok}`}
                                             {asset.persil && ` • Persil ${asset.persil}`}
@@ -884,6 +887,42 @@ export default function DataWPPage() {
                         PERINGATAN: Tindakan ini tidak bisa dibatalkan dan semua kikitir milik warga ini akan ikut terhapus.
                     </p>
                 </div>
+            </Modal>
+
+            {/* Shared NOP Details Modal */}
+            <Modal
+                isOpen={!!detailNop}
+                onClose={() => setDetailNop(null)}
+                title="Detail Pemilik Bersama (Shared NOP)"
+                footer={
+                    <Button onClick={() => setDetailNop(null)}>Tutup</Button>
+                }
+            >
+                {detailNop && nopOwnersMap[detailNop] ? (
+                    <div className="space-y-4">
+                        <div className="bg-muted p-2 rounded text-xs font-mono text-muted-foreground text-center">
+                            NOP: {detailNop}
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium">Daftar Pemilik:</p>
+                            <div className="border rounded-lg divide-y">
+                                {nopOwnersMap[detailNop].map((owner, idx) => (
+                                    <div key={idx} className="p-3 flex items-center justify-between hover:bg-muted/50">
+                                        <div>
+                                            <p className="font-semibold text-sm">{owner.name}</p>
+                                            <p className="text-xs text-muted-foreground">{owner.address}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-xs font-mono block">Rp {owner.tax.toLocaleString('id-ID')}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-center text-muted-foreground">Data tidak ditemukan.</p>
+                )}
             </Modal>
         </div>
     )
