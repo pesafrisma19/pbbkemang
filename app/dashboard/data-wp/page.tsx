@@ -659,6 +659,33 @@ export default function DataWPPage() {
                 <SimpleAccordion items={items} />
             )}
 
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t pt-4">
+                    <div className="text-sm text-muted-foreground">
+                        Halaman {currentPage} dari {totalPages} ({filteredData.length} data)
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        >
+                            Sebelumnya
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        >
+                            Selanjutnya
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             {/* Main Modal (Add/Edit) */}
             <Modal
                 isOpen={isModalOpen}
