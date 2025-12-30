@@ -462,9 +462,31 @@ export default function DataWPPage() {
                 <div className="text-left">
                     <div className="flex items-center gap-2">
                         <p className="font-semibold">{wp.name}</p>
-                        {/* Optional Badge for WA presence */}
                     </div>
                     <p className="text-xs text-muted-foreground">{wp.address}</p>
+
+                    {/* Search Match Highlight */}
+                    {searchTerm && (
+                        <div className="mt-1">
+                            {wp.assets.map(a => {
+                                const matchParts = []
+                                const lowerTerm = searchTerm.toLowerCase()
+                                if (a.nop.includes(searchTerm)) matchParts.push(`NOP: ${a.nop}`)
+                                if (a.original_name?.toLowerCase().includes(lowerTerm)) matchParts.push(`Ex: ${a.original_name}`)
+                                if (a.blok?.toLowerCase().includes(lowerTerm)) matchParts.push(`Blok ${a.blok}`)
+                                if (a.persil?.toLowerCase().includes(lowerTerm)) matchParts.push(`Persil ${a.persil}`)
+
+                                if (matchParts.length > 0) {
+                                    return (
+                                        <Badge key={a.nop} variant="outline" className="mr-1 text-[10px] h-4 px-1 font-normal bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200">
+                                            {matchParts.join(", ")}
+                                        </Badge>
+                                    )
+                                }
+                                return null
+                            })}
+                        </div>
+                    )}
                 </div>
                 <div className="text-right flex items-center gap-3">
                     <Badge variant="outline" className="hidden sm:inline-flex">{wp.total_asset} Kikitir</Badge>
