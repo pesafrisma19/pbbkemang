@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { Input } from "@/components/ui/Input"
-import { Button } from "@/components/ui/Button"
+import { Card, CardContent } from "@/components/ui/Card"
 import { Toggle } from "@/components/ui/Toggle"
-import { Search, Loader2, User, CalendarDays } from "lucide-react"
+import { Button } from "@/components/ui/Button"
+import { Search, MapPin, Loader2, User, CalendarDays, ChevronDown, ChevronUp, Filter } from "lucide-react"
 
-// --- TYPES ---
+// Grouped Structure
 type TaxObject = {
     id: string
     nop: string
@@ -35,23 +36,34 @@ export default function PembayaranPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [wpGroups, setWpGroups] = useState<WPGroup[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [filterStatus, setFilterStatus] = useState<FilterStatus>('unpaid')
+    const [filterStatus, setFilterStatus] = useState<FilterStatus>('unpaid') // Default to Unpaid for better UX? Or 'all'. Let's use 'unpaid' as it's most actionable.
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1)
     const itemsPerPage = 10
 
-    // --- FETCH DATA ---
+    // Fetch Data
     const fetchData = useCallback(async () => {
         setIsLoading(true)
         try {
+            // Fetch Citizens with their Tax Objects
             const { data, error } = await supabase
                 .from('citizens')
                 .select(`
-                    id, name, address,
+                    id,
+                    name,
+                    address,
                     tax_objects (
-                        id, nop, location_name, amount_due, status, paid_at, year,
-                        original_name, persil, blok
+                        id,
+                        nop,
+                        location_name,
+                        amount_due,
+                        status,
+                        paid_at,
+                        year,
+                        original_name,
+                        persil,
+                        blok
                     )
                 `)
                 .order('name', { ascending: true })
@@ -73,6 +85,9 @@ export default function PembayaranPage() {
                         blok: obj.blok
                     }))
 
+                    // Only include WPs that have tax objects matching the search? 
+                    // Or filter later. Better to filter locally for responsiveness.
+
                     const totalUnpaid = objects
                         .filter(o => !o.paid)
                         .reduce((sum, o) => sum + o.amount, 0)
@@ -86,6 +101,8 @@ export default function PembayaranPage() {
                     }
                 })
 
+                // Filter out empty groups if needed, or keep them. 
+                // Usually for payment page we only care about WPs with tax objects.
                 const validGroups = groups.filter(g => g.tax_objects.length > 0)
                 setWpGroups(validGroups)
             }
@@ -100,19 +117,26 @@ export default function PembayaranPage() {
         fetchData()
     }, [fetchData])
 
-    // --- HANDLE TOGGLE ---
+    // Handle Toggle Payment
     const handleToggle = async (objectId: string, currentStatus: boolean, citizenId: string) => {
         const isNowPaid = !currentStatus;
         const now = isNowPaid ? new Date().toISOString() : null;
 
         // Optimistic Update
         const previousGroups = [...wpGroups];
+
         const newGroups = wpGroups.map(group => {
             if (group.citizen_id !== citizenId) return group;
+
             const newObjects = group.tax_objects.map(obj =>
                 obj.id === objectId ? { ...obj, paid: isNowPaid, paidAt: now } : obj
             );
-            const newTotalUnpaid = newObjects.filter(o => !o.paid).reduce((sum, o) => sum + o.amount, 0);
+
+            // Recalculate Total Unpaid
+            const newTotalUnpaid = newObjects
+                .filter(o => !o.paid)
+                .reduce((sum, o) => sum + o.amount, 0);
+
             return { ...group, tax_objects: newObjects, total_unpaid: newTotalUnpaid };
         });
 
@@ -122,11 +146,14 @@ export default function PembayaranPage() {
             const newStatus = isNowPaid ? 'paid' : 'unpaid'
             const { error } = await supabase
                 .from('tax_objects')
-                .update({ status: newStatus, paid_at: now })
+                .update({
+                    status: newStatus,
+                    paid_at: now
+                })
                 .eq('id', objectId)
 
             if (error) {
-                setWpGroups(previousGroups)
+                setWpGroups(previousGroups) // Revert
                 alert("Gagal update status pembayaran.")
             }
         } catch (err) {
@@ -135,22 +162,40 @@ export default function PembayaranPage() {
         }
     }
 
-    // --- FILTER LOGIC ---
+    // Filter Logic
     const filteredGroups = wpGroups.filter(g => {
+        // 1. Status Filter
         if (filterStatus === 'unpaid' && g.total_unpaid === 0) return false;
         if (filterStatus === 'paid' && g.total_unpaid > 0) return false;
+
+        // 2. Search Filter
         const lowerSearch = searchTerm.toLowerCase()
-        if (!lowerSearch) return true;
+        if (!lowerSearch) return true; // fast exit
+
+        // Match Name or Address
         if (g.name.toLowerCase().includes(lowerSearch)) return true
         if (g.address?.toLowerCase().includes(lowerSearch)) return true
-        return g.tax_objects.some(obj => obj.nop.includes(searchTerm))
+
+        // Match any Tax Object NOP
+        const hasMatchingObject = g.tax_objects.some(obj =>
+            obj.nop.includes(searchTerm)
+        )
+        return hasMatchingObject
     })
 
+    // Pagination Logic
     const totalPages = Math.ceil(filteredGroups.length / itemsPerPage)
-    const paginatedGroups = filteredGroups.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    const paginatedGroups = filteredGroups.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    )
 
-    useEffect(() => { setCurrentPage(1) }, [searchTerm, filterStatus])
+    // Reset page on search or filter change
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchTerm, filterStatus])
 
+    // Helper to format date
     const formatDate = (dateString: string | null) => {
         if (!dateString) return ""
         const d = new Date(dateString)
@@ -165,6 +210,7 @@ export default function PembayaranPage() {
             </div>
 
             <div className="sticky top-0 z-30 pt-2 pb-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 space-y-3">
+                {/* Search Bar - Removed autoFocus */}
                 <Input
                     placeholder="Scan NOP atau Ketik Nama..."
                     icon={Search}
@@ -175,20 +221,33 @@ export default function PembayaranPage() {
 
                 {/* Filter Tabs */}
                 <div className="flex p-1 bg-muted/50 rounded-lg border w-full sm:w-fit">
-                    {['all', 'unpaid', 'paid'].map((status) => (
-                        <button
-                            key={status}
-                            onClick={() => setFilterStatus(status as FilterStatus)}
-                            className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all capitalize ${filterStatus === status
-                                ? status === 'unpaid' ? 'bg-red-100 text-red-700 shadow-sm border border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800'
-                                    : status === 'paid' ? 'bg-green-100 text-green-700 shadow-sm border border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800'
-                                        : 'bg-background text-foreground shadow-sm'
-                                : 'text-muted-foreground hover:bg-background/50'
-                                }`}
-                        >
-                            {status === 'all' ? 'Semua' : status === 'unpaid' ? 'Belum Lunas' : 'Lunas'}
-                        </button>
-                    ))}
+                    <button
+                        onClick={() => setFilterStatus('all')}
+                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filterStatus === 'all'
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:bg-background/50'
+                            }`}
+                    >
+                        Semua
+                    </button>
+                    <button
+                        onClick={() => setFilterStatus('unpaid')}
+                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filterStatus === 'unpaid'
+                            ? 'bg-red-100 text-red-700 shadow-sm border border-red-200'
+                            : 'text-muted-foreground hover:bg-background/50'
+                            }`}
+                    >
+                        Belum Lunas
+                    </button>
+                    <button
+                        onClick={() => setFilterStatus('paid')}
+                        className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filterStatus === 'paid'
+                            ? 'bg-green-100 text-green-700 shadow-sm border border-green-200'
+                            : 'text-muted-foreground hover:bg-background/50'
+                            }`}
+                    >
+                        Lunas
+                    </button>
                 </div>
             </div>
 
@@ -202,14 +261,14 @@ export default function PembayaranPage() {
                             <div className="bg-muted/30 p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <User size={18} className="text-blue-600 dark:text-blue-400" />
+                                        <User size={18} className="text-blue-600" />
                                         <span className="font-bold text-lg">{group.name}</span>
                                     </div>
                                     <p className="text-sm text-muted-foreground ml-6">{group.address}</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Sisa Tagihan</p>
-                                    <p className={`text-xl font-bold font-mono ${group.total_unpaid > 0 ? 'text-destructive dark:text-red-400' : 'text-success dark:text-green-400'}`}>
+                                    <p className={`text-xl font-bold font-mono ${group.total_unpaid > 0 ? 'text-destructive' : 'text-success'}`}>
                                         Rp {group.total_unpaid.toLocaleString('id-ID')}
                                     </p>
                                 </div>
@@ -218,57 +277,30 @@ export default function PembayaranPage() {
                             {/* List of Tax Objects */}
                             <div className="divide-y">
                                 {group.tax_objects.map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className={`p-4 transition-colors ${item.paid
-                                                // LOGIC GABUNGAN: 
-                                                // Light Mode: bg-green-50/50
-                                                // Dark Mode:  dark:bg-green-900/20
-                                                ? 'bg-green-50/50 dark:bg-green-900/20'
-                                                : 'hover:bg-muted/20'
-                                            }`}
-                                    >
+                                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-green-50/50' : 'hover:bg-muted/20'}`}>
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                             {/* Item Details */}
                                             <div className="flex-1 space-y-1">
                                                 <div className="flex items-center gap-2 text-sm font-medium">
-                                                    {/* NOP Badge: Light(slate-100) vs Dark(slate-800) */}
-                                                    <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs font-mono">
-                                                        {item.nop}
-                                                    </span>
+                                                    <span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
                                                     <span>{item.location}</span>
-                                                    {/* Year Text: Light(muted) vs Dark(green-300 if paid) */}
-                                                    <span className={`text-muted-foreground ${item.paid ? 'dark:text-green-300' : ''}`}>
-                                                        • Thn {item.year}
-                                                    </span>
+                                                    <span className="text-muted-foreground">• Thn {item.year}</span>
                                                 </div>
 
                                                 {/* Extra Details: Original Name, Persil, Blok */}
-                                                <div className={`flex flex-wrap gap-x-4 gap-y-1 text-xs ml-1 ${item.paid
-                                                        ? 'text-muted-foreground dark:text-green-300' // Dark mode jadi hijau teksnya
-                                                        : 'text-muted-foreground'
-                                                    }`}>
+                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground ml-1">
                                                     {item.original_name && (
                                                         <span className="flex items-center gap-1">
                                                             Ex: <span className="text-foreground/80 font-medium">{item.original_name}</span>
                                                         </span>
                                                     )}
-
-                                                    {/* Badge Logic for Blok & Persil */}
-                                                    {/* Menggunakan base style + conditional dark mode style */}
                                                     {item.blok && (
-                                                        <span className={`px-1.5 rounded border bg-slate-50 border-slate-100 ${item.paid
-                                                                ? 'dark:bg-green-900/50 dark:border-green-800'
-                                                                : 'dark:bg-slate-900 dark:border-slate-800'
-                                                            }`}>
+                                                        <span className="bg-slate-50 px-1.5 rounded border border-slate-100">
                                                             Blok: {item.blok}
                                                         </span>
                                                     )}
                                                     {item.persil && (
-                                                        <span className={`px-1.5 rounded border bg-slate-50 border-slate-100 ${item.paid
-                                                                ? 'dark:bg-green-900/50 dark:border-green-800'
-                                                                : 'dark:bg-slate-900 dark:border-slate-800'
-                                                            }`}>
+                                                        <span className="bg-slate-50 px-1.5 rounded border border-slate-100">
                                                             Persil: {item.persil}
                                                         </span>
                                                     )}
@@ -280,8 +312,7 @@ export default function PembayaranPage() {
                                                 <div className="text-right min-w-[100px]">
                                                     <p className="font-bold text-sm">Rp {Number(item.amount).toLocaleString('id-ID')}</p>
                                                     {item.paid && item.paidAt && (
-                                                        // Text Success: Light(green-600) vs Dark(green-400)
-                                                        <div className="text-[10px] text-green-600 dark:text-green-400 flex items-center justify-end gap-1">
+                                                        <div className="text-[10px] text-green-600 flex items-center justify-end gap-1">
                                                             <CalendarDays size={10} />
                                                             {formatDate(item.paidAt)}
                                                         </div>
@@ -293,7 +324,7 @@ export default function PembayaranPage() {
                                                         checked={item.paid}
                                                         onCheckedChange={() => handleToggle(item.id, item.paid, group.citizen_id)}
                                                     />
-                                                    <span className={`text-[10px] font-bold ${item.paid ? 'text-success dark:text-green-400' : 'text-muted-foreground'}`}>
+                                                    <span className={`text-[10px] font-bold ${item.paid ? 'text-success' : 'text-muted-foreground'}`}>
                                                         {item.paid ? 'LUNAS' : 'BELUM'}
                                                     </span>
                                                 </div>
