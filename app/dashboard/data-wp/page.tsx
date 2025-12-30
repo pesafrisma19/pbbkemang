@@ -505,6 +505,21 @@ export default function DataWPPage() {
                                     {asset.nop}
                                     {asset.blok && <span className="ml-2 font-sans bg-slate-100 px-1 rounded">Blok {asset.blok}</span>}
                                     {asset.persil && <span className="ml-1 font-sans bg-slate-100 px-1 rounded">Persil {asset.persil}</span>}
+
+                                    {/* Global Shared Indicator */}
+                                    {nopOwnersMap[asset.nop] && nopOwnersMap[asset.nop].length > 1 && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                setDetailNop(asset.nop)
+                                            }}
+                                            className="ml-2 inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-sans hover:bg-amber-200 transition-colors"
+                                            title="Klik untuk lihat detail pemilik"
+                                        >
+                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                                            {nopOwnersMap[asset.nop].length} Pemilik
+                                        </button>
+                                    )}
                                 </p>
                                 {asset.original_name && <p className="text-[10px] text-muted-foreground italic">Ex: {asset.original_name}</p>}
                             </div>
@@ -696,22 +711,6 @@ export default function DataWPPage() {
                                                 <Badge variant="outline" className="h-4 px-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">
                                                     Shared
                                                 </Badge>
-                                            )}
-                                            {/* Global Shared Indicator */}
-                                            {nopOwnersMap[asset.nop] && nopOwnersMap[asset.nop].length > 1 && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault(); // prevent accordion toggle if inside one
-                                                        setDetailNop(asset.nop)
-                                                    }}
-                                                    className="group cursor-pointer hover:opacity-80 transition-opacity"
-                                                    title="Klik untuk lihat detail pemilik"
-                                                >
-                                                    <Badge variant="outline" className="h-4 px-1 text-[10px] bg-amber-100 text-amber-700 hover:bg-amber-100 border-none flex items-center gap-1">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
-                                                        {nopOwnersMap[asset.nop].length} Pemilik (Lihat)
-                                                    </Badge>
-                                                </button>
                                             )}
                                             {asset.blok && ` • Blok ${asset.blok}`}
                                             {asset.persil && ` • Persil ${asset.persil}`}
