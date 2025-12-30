@@ -190,6 +190,7 @@ export default function DataWPPage() {
                         const nominal = Number(row['NOMINAL_PAJAK']) || 0
 
                         await supabase
+                            .from('tax_objects')
                             .upsert({
                                 nop: nop,
                                 citizen_id: citizenId,
