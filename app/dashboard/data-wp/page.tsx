@@ -616,7 +616,7 @@ export default function DataWPPage() {
                     </>
                 }
             >
-                <div className="space-y-4 pr-2">
+                <div className="space-y-4">
                     <div className="space-y-4 border-b pb-4">
                         <h3 className="font-semibold text-sm text-accent-blue">I. Data Diri Warga</h3>
                         <div className="space-y-2">
@@ -724,17 +724,21 @@ export default function DataWPPage() {
                                         {useFastNop ? (
                                             <div className="flex items-center gap-2">
                                                 <div className="bg-muted px-2 py-1.5 rounded border text-sm text-muted-foreground font-mono select-none">
-                                                    32.05.130.005.
+                                                    32.05.130.005.000.
                                                 </div>
                                                 <Input
-                                                    placeholder="0000.0"
+                                                    placeholder="1466"
                                                     className="h-9 text-sm font-mono flex-1"
-                                                    value={newAsset.nop.replace('32.05.130.005.', '')}
+                                                    value={newAsset.nop.replace('32.05.130.005.000.', '').slice(0, -1)}
                                                     onChange={(e) => {
-                                                        const val = e.target.value
-                                                        setNewAsset({ ...newAsset, nop: `32.05.130.005.${val}` })
+                                                        const val = e.target.value.replace(/\D/g, '').substring(0, 4)
+                                                        // Logic: Prefix + Input + Suffix (7)
+                                                        setNewAsset({ ...newAsset, nop: `32.05.130.005.000.${val}7` })
                                                     }}
                                                 />
+                                                <div className="bg-muted px-2 py-1.5 rounded border text-sm text-muted-foreground font-mono select-none">
+                                                    7
+                                                </div>
                                             </div>
                                         ) : (
                                             <Input
@@ -747,7 +751,7 @@ export default function DataWPPage() {
                                     </div>
                                     {useFastNop && (
                                         <p className="text-[10px] text-muted-foreground">
-                                            *Otomatis menambahkan prefix 32.05.130.005.
+                                            *Otomatis prefix: 32.05.130.005.000. & suffix: 7
                                         </p>
                                     )}
                                 </div>
