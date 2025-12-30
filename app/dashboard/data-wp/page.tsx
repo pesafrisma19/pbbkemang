@@ -60,6 +60,7 @@ export default function DataWPPage() {
         nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid',
         original_name: "", persil: "", blok: ""
     })
+    const [nopOwnersMap, setNopOwnersMap] = useState<Record<string, string[]>>({})
     const [showAssetForm, setShowAssetForm] = useState(false)
     const [useFastNop, setUseFastNop] = useState(true)
 
@@ -272,6 +273,15 @@ export default function DataWPPage() {
                         blok: obj.blok
                     })) || []
                 }))
+                // Compute NOP Owners Map
+                const ownersMap: Record<string, string[]> = {}
+                mapped.forEach(wp => {
+                    wp.assets.forEach(asset => {
+                        if (!ownersMap[asset.nop]) ownersMap[asset.nop] = []
+                        ownersMap[asset.nop].push(wp.name)
+                    })
+                })
+                setNopOwnersMap(ownersMap)
                 setLocalData(mapped)
             }
         } catch (err) {
@@ -681,6 +691,24 @@ export default function DataWPPage() {
                                                 <Badge variant="outline" className="h-4 px-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">
                                                     Shared
                                                 </Badge>
+                                            )}
+                                            {/* Global Shared Indicator */}
+                                            {nopOwnersMap[asset.nop] && nopOwnersMap[asset.nop].length > 1 && (
+                                                <div className="relative group cursor-help">
+                                                    <Badge variant="outline" className="h-4 px-1 text-[10px] bg-amber-100 text-amber-700 hover:bg-amber-100 border-none flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                                                        {nopOwnersMap[asset.nop].length} Pemilik
+                                                    </Badge>
+                                                    {/* Tooltip */}
+                                                    <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-black text-white text-[10px] rounded shadow-lg hidden group-hover:block z-50">
+                                                        <p className="font-semibold mb-1">Dimiliki oleh:</p>
+                                                        <ul className="list-disc pl-3">
+                                                            {nopOwnersMap[asset.nop].map((owner, idx) => (
+                                                                <li key={idx}>{owner}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                </div>
                                             )}
                                             {asset.blok && ` • Blok ${asset.blok}`}
                                             {asset.persil && ` • Persil ${asset.persil}`}
