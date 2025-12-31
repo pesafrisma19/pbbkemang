@@ -136,10 +136,10 @@ export default function Home() {
         data?.forEach((c: any) => {
           if (c.tax_objects?.length > 0) {
             c.tax_objects.forEach((t: any) => {
-              // Client-side Filter
               const matchesName = c.name.toLowerCase().includes(query.toLowerCase())
+              const searchClean = query.replace(/[.]/g, '');
               const matchesAsset =
-                t.nop.includes(query) ||
+                t.nop.includes(searchClean) ||
                 t.original_name?.toLowerCase().includes(query.toLowerCase()) ||
                 t.blok?.toLowerCase().includes(query.toLowerCase()) ||
                 t.persil?.toLowerCase().includes(query.toLowerCase());
@@ -149,7 +149,8 @@ export default function Home() {
                   id: c.id,
                   name: c.name,
                   address: c.address,
-                  nop: t.nop,
+                  nop: t.nop.replace(/[.]/g, ''),
+                  raw_nop: t.nop, // Keep raw for querying
                   loc: t.location_name,
                   year: t.year || '-',
                   amount: t.amount_due,
@@ -165,7 +166,7 @@ export default function Home() {
         });
 
         // 5. Fetch Shared NOP Info
-        const resultNops = flats.map(f => f.nop);
+        const resultNops = flats.map(f => f.raw_nop);
         if (resultNops.length > 0) {
           const { data: sharedObjects } = await supabase
             .from('tax_objects')
@@ -185,9 +186,11 @@ export default function Home() {
 
             sharedObjects.forEach((obj: any) => {
               if (obj.citizens) {
-                if (!nopMap[obj.nop]) nopMap[obj.nop] = [];
+                // Normalize key to dot-less to match flat.nop
+                const key = obj.nop.replace(/[.]/g, '');
+                if (!nopMap[key]) nopMap[key] = [];
 
-                nopMap[obj.nop].push({
+                nopMap[key].push({
                   id: obj.citizens.id,
                   name: obj.citizens.name,
                   address: obj.citizens.address || '-',

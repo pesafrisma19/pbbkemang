@@ -77,6 +77,14 @@ export default function DataWPPage() {
         message?: string;
     } | null>(null)
 
+    // General Alert State
+    const [alertState, setAlertState] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: React.ReactNode;
+        type: 'success' | 'error' | 'info';
+    }>({ isOpen: false, title: "", message: "", type: 'info' })
+
     // Delete Confirmation State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<{ id: string, name: string } | null>(null)
@@ -497,9 +505,28 @@ export default function DataWPPage() {
             setIsModalOpen(false)
             resetForm()
 
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err)
-            alert("Terjadi kesalahan database: " + msg)
+        } catch (err: any) {
+            console.error("Submit Error:", err)
+            const msg = err?.message || String(err)
+
+            let title = "Gagal Menyimpan"
+            let userMsg = msg
+
+            // Custom Error Parsing
+            if (msg.includes("duplicate key value") && msg.includes("nik")) {
+                title = "NIK Sudah Terdaftar"
+                userMsg = "NIK yang Anda masukkan sudah digunakan oleh warga lain. Mohon periksa kembali data Anda atau gunakan pencarian untuk menemukan warga tersebut."
+            } else if (msg.includes("violates unique constraint")) {
+                title = "Data Duplikat"
+                userMsg = "Data dengan informasi unik ini (NIK atau NOP) sudah ada di sistem."
+            }
+
+            setAlertState({
+                isOpen: true,
+                title: title,
+                message: userMsg,
+                type: 'error'
+            })
         } finally {
             setIsLoading(false)
         }
@@ -523,9 +550,14 @@ export default function DataWPPage() {
             await fetchData()
             setIsDeleteModalOpen(false)
             setDeleteTarget(null)
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err)
-            alert("Gagal menghapus: " + msg)
+        } catch (err: any) {
+            const msg = err?.message || String(err)
+            setAlertState({
+                isOpen: true,
+                title: "Gagal Menghapus",
+                message: "Tidak dapat menghapus data ini. Kemungkinan data sedang digunakan atau ada masalah koneksi.",
+                type: 'error'
+            })
         } finally {
             setIsLoading(false)
         }
@@ -1153,6 +1185,36 @@ export default function DataWPPage() {
                     </div>
                 )}
             </Modal>
-        </div>
+
+
+            {/* Modal: General Alert */}
+            <Modal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState({ ...alertState, isOpen: false })}
+                title={alertState.title}
+                footer={
+                    <Button
+                        onClick={() => setAlertState({ ...alertState, isOpen: false })}
+                        className={`w-full sm:w-auto ${alertState.type === 'error' ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : ""}`}
+                    >
+                        Mengerti
+                    </Button>
+                }
+            >
+                <div className="flex flex-col items-center justify-center space-y-4 py-4 text-center">
+                    {alertState.type === 'error' && (
+                        <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-full text-red-600 dark:text-red-400 mb-2 ring-8 ring-red-50 dark:ring-red-900/10">
+                            <AlertCircle size={48} strokeWidth={1.5} />
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <p className="text-sm text-foreground/80 leading-relaxed max-w-[90%] mx-auto">
+                            {alertState.message}
+                        </p>
+                    </div>
+                </div>
+            </Modal>
+        </div >
     )
 }

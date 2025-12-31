@@ -74,7 +74,7 @@ export default function PembayaranPage() {
                 const groups: WPGroup[] = data.map((citizen: any) => {
                     const objects: TaxObject[] = (citizen.tax_objects || []).map((obj: any) => ({
                         id: obj.id,
-                        nop: obj.nop,
+                        nop: obj.nop.replace(/[.]/g, ''),
                         location: obj.location_name,
                         year: obj.year || new Date().getFullYear(),
                         amount: obj.amount_due,
@@ -177,8 +177,9 @@ export default function PembayaranPage() {
         if (g.address?.toLowerCase().includes(lowerSearch)) return true
 
         // Match any Tax Object NOP
+        const cleanSearch = searchTerm.replace(/[.]/g, '')
         const hasMatchingObject = g.tax_objects.some(obj =>
-            obj.nop.includes(searchTerm)
+            obj.nop.includes(cleanSearch)
         )
         return hasMatchingObject
     })
