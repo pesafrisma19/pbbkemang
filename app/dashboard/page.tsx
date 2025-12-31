@@ -275,7 +275,13 @@ export default function DashboardPage() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={moneyChartData}>
                                             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)', color: 'var(--color-foreground)' }} formatter={(value: any) => `Rp ${value.toLocaleString('id-ID')}`} />
+                                            <Tooltip
+                                                cursor={{ fill: 'transparent' }}
+                                                contentStyle={{ borderRadius: '8px', borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)', color: 'var(--color-foreground)' }}
+                                                itemStyle={{ color: 'var(--color-foreground)' }}
+                                                labelStyle={{ color: 'var(--color-foreground)' }}
+                                                formatter={(value: any) => `Rp ${value.toLocaleString('id-ID')}`}
+                                            />
                                             <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
                                                 {moneyChartData.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={index === 0 ? 'var(--color-success)' : 'var(--color-warning)'} />
@@ -304,7 +310,11 @@ export default function DashboardPage() {
                                                 <Cell fill="var(--color-success)" /> {/* Lunas */}
                                                 <Cell fill="var(--color-warning)" /> {/* Belum */}
                                             </Pie>
-                                            <Tooltip contentStyle={{ borderRadius: '8px', borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)', color: 'var(--color-foreground)' }} />
+                                            <Tooltip
+                                                contentStyle={{ borderRadius: '8px', borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)', color: 'var(--color-foreground)' }}
+                                                itemStyle={{ color: 'var(--color-foreground)' }}
+                                                labelStyle={{ color: 'var(--color-foreground)' }}
+                                            />
                                             <Legend verticalAlign="bottom" height={36} iconType="circle" />
                                         </PieChart>
                                     </ResponsiveContainer>
