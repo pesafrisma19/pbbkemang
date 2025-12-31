@@ -65,6 +65,18 @@ export default function DataWPPage() {
     const [showAssetForm, setShowAssetForm] = useState(false)
     const [useFastNop, setUseFastNop] = useState(true)
 
+    // Import Result State
+    const [isResultModalOpen, setIsResultModalOpen] = useState(false)
+    const [importResult, setImportResult] = useState<{
+        success: boolean;
+        newCitizens: number;
+        matchedCitizens: number;
+        newAssets: number;
+        skipped: number;
+        errors: string[];
+        message?: string;
+    } | null>(null)
+
     // Delete Confirmation State
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<{ id: string, name: string } | null>(null)
@@ -285,26 +297,32 @@ export default function DataWPPage() {
                     }
                 }
 
-                // Summary Alert
-                let message = `Import Selesai!\n\n` +
-                    `✅ ${newCitizenCount} WP Baru Ditambahkan\n` +
-                    `✅ ${matchedCitizenCount} WP Lama Terdeteksi/Duplicate\n` +
-                    `✅ ${newAssetCount} Kikitir Berhasil Disimpan\n`
+                // Show Result Modal
+                setImportResult({
+                    success: true,
+                    newCitizens: newCitizenCount,
+                    matchedCitizens: matchedCitizenCount,
+                    newAssets: newAssetCount,
+                    skipped: skippedCount,
+                    errors: errorLog
+                })
+                setIsResultModalOpen(true)
 
-                if (skippedCount > 0 || errorLog.length > 0) {
-                    message += `\n⚠️ ${skippedCount} Baris Gagal/Dilewati.\n` +
-                        `---------------------\n` +
-                        errorLog.slice(0, 5).join('\n') +
-                        (errorLog.length > 5 ? `\n...dan ${errorLog.length - 5} error lainnya.` : '')
-                }
-
-                alert(message)
                 fetchData()
 
             } catch (err) {
                 console.error("Import Error:", err)
                 const msg = err instanceof Error ? err.message : String(err)
-                alert("Critical Error saat membaca file: " + msg)
+                setImportResult({
+                    success: false,
+                    newCitizens: 0,
+                    matchedCitizens: 0,
+                    newAssets: 0,
+                    skipped: 0,
+                    errors: [msg],
+                    message: "Gagal memproses file Excel."
+                })
+                setIsResultModalOpen(true)
             } finally {
                 setIsImporting(false)
                 if (fileInputRef.current) fileInputRef.current.value = "" // Reset input
@@ -1066,6 +1084,73 @@ export default function DataWPPage() {
                     </div>
                 ) : (
                     <p className="text-center text-muted-foreground">Data tidak ditemukan.</p>
+                )}
+            </Modal>
+
+            {/* Modal: Result Import */}
+            <Modal
+                isOpen={isResultModalOpen}
+                onClose={() => setIsResultModalOpen(false)}
+                title="Hasil Import Data"
+                footer={
+                    <Button onClick={() => setIsResultModalOpen(false)} className="w-full sm:w-auto">
+                        Tutup
+                    </Button>
+                }
+            >
+                {importResult && (
+                    <div className="space-y-6">
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="col-span-2 sm:col-span-1 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30 p-3 rounded-xl flex flex-col items-center justify-center text-center">
+                                <span className="text-xs text-muted-foreground mb-1">Berhasil</span>
+                                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                    {importResult.newAssets}
+                                </div>
+                                <span className="text-[10px] text-green-600/80">Kikitir Tersimpan</span>
+                            </div>
+                            <div className="col-span-2 sm:col-span-1 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 p-3 rounded-xl flex flex-col items-center justify-center text-center">
+                                <span className="text-xs text-muted-foreground mb-1">Gagal/Dilewati</span>
+                                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                    {importResult.skipped}
+                                </div>
+                                <span className="text-[10px] text-red-600/80">Baris Bermasalah</span>
+                            </div>
+                        </div>
+
+                        {/* Detailed Stats */}
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div className="flex justify-between p-2 rounded bg-muted/50">
+                                <span>Warga Baru</span>
+                                <span className="font-semibold">{importResult.newCitizens}</span>
+                            </div>
+                            <div className="flex justify-between p-2 rounded bg-muted/50">
+                                <span>Warga Lama (Match)</span>
+                                <span className="font-semibold">{importResult.matchedCitizens}</span>
+                            </div>
+                        </div>
+
+                        {/* Error Log */}
+                        {importResult.errors.length > 0 ? (
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                                    <AlertCircle size={16} />
+                                    <span>Rincian Error ({importResult.errors.length})</span>
+                                </div>
+                                <div className="bg-destructive/5 rounded-lg border border-destructive/20 p-3 text-xs font-mono text-destructive max-h-[150px] overflow-y-auto space-y-1">
+                                    {importResult.errors.map((err, i) => (
+                                        <div key={i} className="border-b border-destructive/10 last:border-0 pb-1 last:pb-0">
+                                            {err}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-4 bg-green-50/50 rounded-lg border border-green-100 text-green-600 text-sm">
+                                ✅ Semua data berhasil diimport tanpa error!
+                            </div>
+                        )}
+                    </div>
                 )}
             </Modal>
         </div>
