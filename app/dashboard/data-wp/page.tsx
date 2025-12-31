@@ -214,7 +214,8 @@ export default function DataWPPage() {
 
                     // Prepare metadata
                     let phone = row['WHATSAPP'] ? String(row['WHATSAPP']).replace(/\D/g, '') : null
-                    if (phone && phone.startsWith('0')) phone = '62' + phone.substring(1)
+                    // REMOVED: Auto-convert '0' to '62'. Now keeps '0' like manual input.
+                    // if (phone && phone.startsWith('0')) phone = '62' + phone.substring(1)
 
                     if (!citizenId) {
                         // Check Database
