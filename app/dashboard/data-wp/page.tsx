@@ -906,39 +906,52 @@ export default function DataWPPage() {
                         {/* List Kikitir in Form */}
                         <div className="space-y-2">
                             {formAssets.map((asset, idx) => (
-                                <div key={idx} className="flex items-center justify-between bg-muted/50 p-2 rounded-lg text-sm group hover:bg-muted transition-colors">
-                                    <div className="flex-1">
-                                        <div className="font-medium">
-                                            {asset.loc} <span className="text-xs text-muted-foreground font-normal">({asset.year})</span>
+                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-muted/50 p-3 rounded-lg text-sm group hover:bg-muted transition-colors gap-3 sm:gap-2">
+                                    <div className="flex-1 w-full sm:w-auto">
+                                        <div className="font-medium flex justify-between sm:block">
+                                            <span>{asset.loc}</span>
+                                            <span className="text-xs text-muted-foreground font-normal sm:ml-1">Thn {asset.year}</span>
                                         </div>
-                                        <div className="text-xs text-muted-foreground font-mono flex items-center gap-1">
+                                        <div className="text-xs text-muted-foreground font-mono flex flex-wrap items-center gap-1 mt-1">
                                             {asset.nop}
-                                            {/* Shared Indicator (Mock logic or check duplicates in local list) */}
+                                            {/* Shared Indicator */}
                                             {formAssets.filter(a => a.nop === asset.nop).length > 1 && (
                                                 <Badge variant="outline" className="h-4 px-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">
                                                     Shared
                                                 </Badge>
                                             )}
-                                            {asset.blok && ` • Blok ${asset.blok}`}
-                                            {asset.persil && ` • Persil ${asset.persil}`}
+                                            {asset.blok && <span className="hidden sm:inline">•</span>}
+                                            {asset.blok && <span className="bg-background px-1 rounded border">Blok {asset.blok}</span>}
+
+                                            {asset.persil && <span className="hidden sm:inline">•</span>}
+                                            {asset.persil && <span className="bg-background px-1 rounded border">Persil {asset.persil}</span>}
                                         </div>
+                                        {asset.original_name && (
+                                            <div className="text-[10px] text-muted-foreground italic mt-0.5">
+                                                Ex: {asset.original_name}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-bold">Rp {Number(asset.tax).toLocaleString('id-ID')}</span>
-                                        <button
-                                            onClick={() => handleEditAsset(idx)}
-                                            className="text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-colors mr-1"
-                                            title="Edit Kikitir ini"
-                                        >
-                                            <Pencil size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => removeAsset(idx)}
-                                            className="text-destructive hover:bg-red-100 p-2 rounded-full transition-colors"
-                                            title="Hapus Kikitir ini"
-                                        >
-                                            <Trash size={16} />
-                                        </button>
+
+                                    {/* Actions & Price */}
+                                    <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end gap-3 border-t sm:border-t-0 pt-2 sm:pt-0 border-border/40">
+                                        <span className="font-bold text-foreground">Rp {Number(asset.tax).toLocaleString('id-ID')}</span>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => handleEditAsset(idx)}
+                                                className="text-blue-600 bg-blue-50 sm:bg-transparent hover:bg-blue-100 p-2 rounded-full transition-colors"
+                                                title="Edit Kikitir ini"
+                                            >
+                                                <Pencil size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => removeAsset(idx)}
+                                                className="text-destructive bg-red-50 sm:bg-transparent hover:bg-red-100 p-2 rounded-full transition-colors"
+                                                title="Hapus Kikitir ini"
+                                            >
+                                                <Trash size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
