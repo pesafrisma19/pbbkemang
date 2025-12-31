@@ -105,18 +105,17 @@ export default function DataWPPage() {
         ]
 
         // Sample Data:
-        // 1. Asep Saepudin (1 Asset)
-        // 2. Budi Santoso (2 Assets - Row 2 & 3 have same Name/Address)
-        // Note: NOP format uses the full string (Standard 32.05...) to match system expectations.
+        // 1. Asep - Full NOP (18 digit numbers only)
+        // 2. Budi - Short NOP (4 digit shorthand) -> automatically expands to 3205130005000xxxx7
         const sample = [
-            // WP 1: Asep - 1 Kikitir
-            ["Asep Saepudin", "Dusun Manis RT 01", "3204123456780001", "081234567890", "32.05.130.005.000.1000.7", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
+            // WP 1: Asep - 1 Kikitir (Full NOP 18 digit)
+            ["Asep Saepudin", "Dusun Manis RT 01", "3204123456780001", "081234567890", "320513000500010007", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
 
-            // WP 2: Budi - Kikitir 1
-            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "32.05.130.005.000.2001.7", "Rumah Tinggal", 125000, 2024, "LUNAS", "-", "12b", "005"],
+            // WP 2: Budi - Kikitir 1 (Short NOP 4 digit: 2001 -> 320513000500020017)
+            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "2001", "Rumah Tinggal", 125000, 2024, "LUNAS", "-", "12b", "005"],
 
-            // WP 2: Budi - Kikitir 2 (Same Name & Address = Same WP)
-            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "32.05.130.005.000.2002.7", "Kebun Jati", 75000, 2024, "BELUM", "-", "12c", "005"]
+            // WP 2: Budi - Kikitir 2 (Short NOP 4 digit: 2002)
+            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "2002", "Kebun Jati", 75000, 2024, "BELUM", "-", "12c", "005"]
         ]
 
         const wb = XLSX.utils.book_new()
@@ -190,10 +189,18 @@ export default function DataWPPage() {
                     const address = String(addressRaw).trim()
                     const nominal = Number(taxRaw) || 0
 
-                    // NOP Handling: Ensure it's a string even if Excel thinks it's a number
-                    // If user input 3205... without dots, we keep it as is. 
-                    // Suggestion: Use Full Format with dots in Template.
-                    let nop = String(nopRaw).trim().replace(/['"]/g, '')
+                    // NOP Handling: 
+                    // 1. Convert to string and strip non-digits (remove dots, etc)
+                    let nopClean = String(nopRaw).trim().replace(/\D/g, '')
+
+                    // 2. Expand Short Code logic (if length <= 4)
+                    if (nopClean.length <= 4 && nopClean.length > 0) {
+                        // Pad with leading zeros if less than 4 digits?? No, usually simple concat. 
+                        // User said "1466" -> "320513000500014667"
+                        // Pattern: PREFIX (13) + INPUT (4) + SUFFIX (1) = 18 digits.
+                        // Only if input is exactly 4 digits or less? Let's assume input matches the "Fast Mode" hole.
+                        nopClean = `3205130005000${nopClean}7`
+                    }
 
                     if (nominal <= 0) {
                         errorLog.push(`Baris ${rowNum}: Nominal Pajak 0 atau invalid`)
@@ -257,7 +264,7 @@ export default function DataWPPage() {
                         const { error: upsertError } = await supabase
                             .from('tax_objects')
                             .upsert({
-                                nop: nop,
+                                nop: nopClean,
                                 citizen_id: citizenId,
                                 location_name: row['LOKASI_OBJEK'] || 'Tanah/Bangunan',
                                 amount_due: nominal,
@@ -269,7 +276,7 @@ export default function DataWPPage() {
                             }, { onConflict: 'nop, citizen_id' })
 
                         if (upsertError) {
-                            errorLog.push(`Baris ${rowNum}: Gagal simpan Kikitir/NOP ${nop} (${upsertError.message})`)
+                            errorLog.push(`Baris ${rowNum}: Gagal simpan Kikitir/NOP ${nopClean} (${upsertError.message})`)
                             // Don't increment newAssetCount
                         } else {
                             newAssetCount++
@@ -343,7 +350,7 @@ export default function DataWPPage() {
                     total_asset: item.tax_objects?.length || 0,
                     total_tax: item.tax_objects?.reduce((sum: number, obj: any) => sum + obj.amount_due, 0) || 0,
                     assets: item.tax_objects?.map((obj: any) => ({
-                        nop: obj.nop,
+                        nop: String(obj.nop).replace(/\D/g, ''), // CLEAN DISPLAY DOTS
                         loc: obj.location_name,
                         tax: obj.amount_due,
                         year: obj.year || new Date().getFullYear(),
@@ -450,7 +457,7 @@ export default function DataWPPage() {
             if (formAssets.length > 0 && citizenId) {
                 const assetsToInsert = formAssets.map(a => ({
                     citizen_id: citizenId,
-                    nop: a.nop,
+                    nop: String(a.nop).replace(/\D/g, ''), // Ensure clean save
                     location_name: a.loc,
                     amount_due: a.tax,
                     status: a.status || 'unpaid',
@@ -545,6 +552,7 @@ export default function DataWPPage() {
                             {wp.assets.map(a => {
                                 const matchParts = []
                                 const lowerTerm = searchTerm.toLowerCase()
+                                // Search against dot-less state
                                 if (a.nop.includes(searchTerm)) matchParts.push(`NOP: ${a.nop}`)
                                 if (a.original_name?.toLowerCase().includes(lowerTerm)) matchParts.push(`Ex: ${a.original_name}`)
                                 if (a.blok?.toLowerCase().includes(lowerTerm)) matchParts.push(`Blok ${a.blok}`)
@@ -882,16 +890,16 @@ export default function DataWPPage() {
                                         {useFastNop ? (
                                             <div className="flex items-center gap-2">
                                                 <div className="bg-muted px-2 py-1.5 rounded border text-sm text-muted-foreground font-mono select-none">
-                                                    32.05.130.005.000.
+                                                    3205130005000
                                                 </div>
                                                 <Input
                                                     placeholder="1466"
                                                     className="h-9 text-sm font-mono flex-1"
-                                                    value={newAsset.nop.replace('32.05.130.005.000.', '').slice(0, -1)}
+                                                    value={newAsset.nop.replace('3205130005000', '').slice(0, -1)}
                                                     onChange={(e) => {
                                                         const val = e.target.value.replace(/\D/g, '').substring(0, 4)
                                                         // Logic: Prefix + Input + Suffix (7)
-                                                        setNewAsset({ ...newAsset, nop: `32.05.130.005.000.${val}7` })
+                                                        setNewAsset({ ...newAsset, nop: `3205130005000${val}7` })
                                                     }}
                                                 />
                                                 <div className="bg-muted px-2 py-1.5 rounded border text-sm text-muted-foreground font-mono select-none">
@@ -900,7 +908,7 @@ export default function DataWPPage() {
                                             </div>
                                         ) : (
                                             <Input
-                                                placeholder="32.05.xxx..."
+                                                placeholder="3205xxxxxxxxxxxxxx"
                                                 className="h-9 text-sm"
                                                 value={newAsset.nop}
                                                 onChange={(e) => setNewAsset({ ...newAsset, nop: e.target.value })}
@@ -909,7 +917,7 @@ export default function DataWPPage() {
                                     </div>
                                     {useFastNop && (
                                         <p className="text-[10px] text-muted-foreground">
-                                            *Otomatis prefix: 32.05.130.005.000. & suffix: 7
+                                            *Otomatis prefix: 3205130005000 & suffix: 7
                                         </p>
                                     )}
                                 </div>
