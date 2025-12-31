@@ -8,7 +8,12 @@ import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { Search, Loader2, MapPin, CheckCircle, TrendingUp, Building2, Globe, ExternalLink, Sun, Moon, Menu, X, Home as HomeIcon, MessageSquare } from "lucide-react"
 import Link from "next/link"
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import dynamic from 'next/dynamic'
+const PieChart = dynamic(() => import('recharts').then(mod => mod.PieChart), { ssr: false, loading: () => <div className="h-[220px] w-full bg-muted/20 animate-pulse rounded-full"></div> })
+const Pie = dynamic(() => import('recharts').then(mod => mod.Pie), { ssr: false })
+const Cell = dynamic(() => import('recharts').then(mod => mod.Cell), { ssr: false })
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false })
+const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false })
 import { useTheme } from "next-themes"
 
 export default function Home() {
@@ -309,7 +314,7 @@ export default function Home() {
       <main className="flex-1 pt-24 pb-12 px-4 container mx-auto flex flex-col items-center gap-12">
 
         {/* Hero Section */}
-        <div className="text-center space-y-4 max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="text-center space-y-4 max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold uppercase tracking-wide mb-2 border border-primary/20">
             <CheckCircle size={12} /> Portal Resmi 2025
           </div>

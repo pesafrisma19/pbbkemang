@@ -4,7 +4,17 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card"
 import { DollarSign, Users, BarChart2, CheckCircle, XCircle, Loader2, MapPin, AlertCircle } from "lucide-react"
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts'
+import dynamic from 'next/dynamic'
+const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false, loading: () => <div className="h-[150px] w-full bg-muted/20 animate-pulse rounded-lg"></div> })
+const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false })
+const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
+const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
+const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false })
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false })
+const Cell = dynamic(() => import('recharts').then(mod => mod.Cell), { ssr: false })
+const PieChart = dynamic(() => import('recharts').then(mod => mod.PieChart), { ssr: false, loading: () => <div className="h-[150px] w-full bg-muted/20 animate-pulse rounded-full"></div> })
+const Pie = dynamic(() => import('recharts').then(mod => mod.Pie), { ssr: false })
+const Legend = dynamic(() => import('recharts').then(mod => mod.Legend), { ssr: false })
 
 export default function DashboardPage() {
     const [stats, setStats] = useState({

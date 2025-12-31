@@ -17,6 +17,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://ozvzyubnftcteqjjedlx.supabase.co" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
