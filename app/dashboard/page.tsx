@@ -5,16 +5,16 @@ import { supabase } from "@/lib/supabaseClient"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card"
 import { DollarSign, Users, BarChart2, CheckCircle, XCircle, Loader2, MapPin, AlertCircle } from "lucide-react"
 import dynamic from 'next/dynamic'
-const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false, loading: () => <div className="h-[150px] w-full bg-muted/20 animate-pulse rounded-lg"></div> })
-const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false })
-const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
-const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
-const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false })
-const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false })
-const Cell = dynamic(() => import('recharts').then(mod => mod.Cell), { ssr: false })
-const PieChart = dynamic(() => import('recharts').then(mod => mod.PieChart), { ssr: false, loading: () => <div className="h-[150px] w-full bg-muted/20 animate-pulse rounded-full"></div> })
-const Pie = dynamic(() => import('recharts').then(mod => mod.Pie), { ssr: false })
-const Legend = dynamic(() => import('recharts').then(mod => mod.Legend), { ssr: false })
+
+const DashboardBarChart = dynamic(() => import('@/components/features/DashboardBarChart'), {
+    ssr: false,
+    loading: () => <div className="h-[150px] w-full bg-muted/20 animate-pulse rounded-lg"></div>
+})
+
+const DashboardPieChart = dynamic(() => import('@/components/features/DashboardPieChart'), {
+    ssr: false,
+    loading: () => <div className="h-[150px] w-full bg-muted/20 animate-pulse rounded-full"></div>
+})
 
 export default function DashboardPage() {
     const [stats, setStats] = useState({
@@ -282,23 +282,7 @@ export default function DashboardPage() {
                             <div className="space-y-2">
                                 <p className="text-xs text-center font-medium text-muted-foreground">Perbandingan Keuangan (Rupiah)</p>
                                 <div className="w-full min-w-0">
-                                    <ResponsiveContainer width="100%" height={150}>
-                                        <BarChart data={moneyChartData}>
-                                            <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
-                                            <Tooltip
-                                                cursor={{ fill: 'transparent' }}
-                                                contentStyle={{ borderRadius: '8px', borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)', color: 'var(--color-foreground)' }}
-                                                itemStyle={{ color: 'var(--color-foreground)' }}
-                                                labelStyle={{ color: 'var(--color-foreground)' }}
-                                                formatter={(value: any) => `Rp ${value.toLocaleString('id-ID')}`}
-                                            />
-                                            <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
-                                                {moneyChartData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={index === 0 ? 'var(--color-success)' : 'var(--color-warning)'} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                    <DashboardBarChart data={moneyChartData} />
                                 </div>
                             </div>
 
@@ -306,28 +290,7 @@ export default function DashboardPage() {
                             <div className="space-y-2 border-t pt-6 border-border">
                                 <p className="text-xs text-center font-medium text-muted-foreground">Rasio Kepatuhan Warga (Orang)</p>
                                 <div className="w-full flex justify-center min-w-0">
-                                    <ResponsiveContainer width="100%" height={150}>
-                                        <PieChart>
-                                            <Pie
-                                                data={peoplePieData}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={40}
-                                                outerRadius={60}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                            >
-                                                <Cell fill="var(--color-success)" /> {/* Lunas */}
-                                                <Cell fill="var(--color-warning)" /> {/* Belum */}
-                                            </Pie>
-                                            <Tooltip
-                                                contentStyle={{ borderRadius: '8px', borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)', color: 'var(--color-foreground)' }}
-                                                itemStyle={{ color: 'var(--color-foreground)' }}
-                                                labelStyle={{ color: 'var(--color-foreground)' }}
-                                            />
-                                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                                        </PieChart>
-                                    </ResponsiveContainer>
+                                    <DashboardPieChart data={peoplePieData} />
                                 </div>
                             </div>
 
