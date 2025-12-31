@@ -851,7 +851,7 @@ export default function DataWPPage() {
                     <div className="space-y-4 border-b pb-4">
                         <h3 className="font-semibold text-sm text-accent-blue">I. Data Diri Warga</h3>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Nama Lengkap</label>
+                            <label htmlFor="fullName" className="text-sm font-medium">Nama Lengkap</label>
                             <Input
                                 name="fullName"
                                 id="fullName"
@@ -862,7 +862,7 @@ export default function DataWPPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">NIK (KTP)</label>
+                                <label htmlFor="nik" className="text-sm font-medium">NIK (KTP)</label>
                                 <Input
                                     name="nik"
                                     id="nik"
@@ -872,7 +872,7 @@ export default function DataWPPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">No. WhatsApp</label>
+                                <label htmlFor="whatsapp" className="text-sm font-medium">No. WhatsApp</label>
                                 <Input
                                     name="whatsapp"
                                     id="whatsapp"
@@ -884,7 +884,7 @@ export default function DataWPPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Alamat</label>
+                            <label htmlFor="address" className="text-sm font-medium">Alamat</label>
                             <Input
                                 name="address"
                                 id="address"
@@ -969,7 +969,7 @@ export default function DataWPPage() {
                             <div className="bg-muted/30 p-4 rounded-xl space-y-3 border border-accent-blue/30 animate-in fade-in zoom-in-95">
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-xs font-medium">Nomor Objek Pajak (NOP)</label>
+                                        <label htmlFor="nopFast" className="text-xs font-medium">Nomor Objek Pajak (NOP)</label>
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -1020,7 +1020,7 @@ export default function DataWPPage() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-medium">Lokasi Tanah</label>
+                                        <label htmlFor="assetLoc" className="text-xs font-medium">Lokasi Tanah</label>
                                         <Input
                                             name="assetLoc"
                                             id="assetLoc"
@@ -1031,7 +1031,7 @@ export default function DataWPPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-medium">Nominal Pajak</label>
+                                        <label htmlFor="assetTax" className="text-xs font-medium">Nominal Pajak</label>
                                         <Input
                                             name="assetTax"
                                             id="assetTax"
@@ -1042,7 +1042,7 @@ export default function DataWPPage() {
                                         />
                                     </div>
                                     <div className="space-y-2 col-span-2">
-                                        <label className="text-xs font-medium">Tahun Pajak</label>
+                                        <label htmlFor="assetYear" className="text-xs font-medium">Tahun Pajak</label>
                                         <Input
                                             name="assetYear"
                                             id="assetYear"
@@ -1059,7 +1059,7 @@ export default function DataWPPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-xs font-medium">Nama Asal/Sebelumnya</label>
+                                        <label htmlFor="originalName" className="text-xs font-medium">Nama Asal/Sebelumnya</label>
                                         <Input
                                             name="originalName"
                                             id="originalName"
@@ -1071,7 +1071,7 @@ export default function DataWPPage() {
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 col-span-1">
                                         <div className="space-y-2">
-                                            <label className="text-xs font-medium">Blok</label>
+                                            <label htmlFor="assetBlok" className="text-xs font-medium">Blok</label>
                                             <Input
                                                 name="assetBlok"
                                                 id="assetBlok"
@@ -1082,7 +1082,7 @@ export default function DataWPPage() {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-xs font-medium">Persil</label>
+                                            <label htmlFor="assetPersil" className="text-xs font-medium">Persil</label>
                                             <Input
                                                 name="assetPersil"
                                                 id="assetPersil"
