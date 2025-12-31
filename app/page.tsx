@@ -242,7 +242,7 @@ export default function Home() {
               <Building2 className="text-primary" />
               Menu Desa
             </span>
-            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)} aria-label="Tutup Menu">
               <X size={24} />
             </Button>
           </div>
@@ -276,7 +276,7 @@ export default function Home() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {/* Mobile Menu Button */}
-            <button className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => setMobileMenuOpen(true)}>
+            <button className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => setMobileMenuOpen(true)} aria-label="Buka Menu">
               <Menu size={24} />
             </button>
             <div className="bg-primary/10 p-1.5 rounded-lg text-primary">
@@ -298,7 +298,7 @@ export default function Home() {
 
           <div className="flex items-center gap-3">
             {/* Theme Toggle */}
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full text-muted-foreground hover:text-foreground hover:bg-muted">
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Ganti Tema">
               {mounted && (resolvedTheme === 'dark' ? <Sun size={20} /> : <Moon size={20} />)}
             </Button>
 
@@ -315,14 +315,14 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="text-center space-y-4 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold uppercase tracking-wide mb-2 border border-primary/20">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/20 text-primary-foreground dark:text-primary rounded-full text-xs font-bold uppercase tracking-wide mb-2 border border-primary/20">
             <CheckCircle size={12} /> Portal Resmi 2025
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground">
             Transparansi Pajak <br />
             <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Membangun Desa</span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
+          <p className="text-lg text-foreground/80 max-w-lg mx-auto leading-relaxed">
             Pantau realisasi pendapatan pajak bumi dan bangunan serta cek status tagihan Anda secara real-time.
           </p>
         </div>
@@ -452,10 +452,10 @@ export default function Home() {
         {/* Pie Chart Section */}
         <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300">
           <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col items-center hover:shadow-md transition-shadow">
-            <h3 className="text-center font-bold text-foreground mb-1 flex items-center gap-2">
+            <h2 className="text-center font-bold text-foreground mb-1 flex items-center gap-2">
               <TrendingUp size={18} className="text-primary" />
               Rasio Kepatuhan
-            </h3>
+            </h2>
             <p className="text-xs text-muted-foreground mb-6">Update Data Realtime</p>
 
             <div className="w-full relative min-w-0">
@@ -519,7 +519,7 @@ export default function Home() {
               <Building2 className="text-primary" />
               Desa Kemang
             </div>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto leading-normal">
+            <p className="text-foreground/70 text-sm max-w-md mx-auto leading-normal">
               Sistem Informasi Digital Pengelolaan Pajak Bumi dan Bangunan (PBB-P2). <br className="hidden md:block" />
               Mewujudkan tata kelola desa yang transparan dan akuntabel.
             </p>
@@ -573,10 +573,10 @@ function StatsCard({ title, value, desc, color, icon }: any) {
         {icon}
       </div>
       <div>
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">{title}</span>
+        <span className="text-xs font-bold text-foreground/70 uppercase tracking-wider block mb-1">{title}</span>
         <span className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">{value}</span>
       </div>
-      <span className="text-xs text-muted-foreground/80 flex items-center gap-1">
+      <span className="text-xs text-foreground/60 flex items-center gap-1">
         {desc}
       </span>
     </div>
