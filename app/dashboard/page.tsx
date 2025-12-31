@@ -271,7 +271,7 @@ export default function DashboardPage() {
                             {/* Bar Chart Money */}
                             <div className="space-y-2">
                                 <p className="text-xs text-center font-medium text-muted-foreground">Perbandingan Keuangan (Rupiah)</p>
-                                <div className="h-[150px] w-full">
+                                <div className="h-[150px] w-full min-w-0">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={moneyChartData}>
                                             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
@@ -295,7 +295,7 @@ export default function DashboardPage() {
                             {/* Pie Chart People */}
                             <div className="space-y-2 border-t pt-6 border-border">
                                 <p className="text-xs text-center font-medium text-muted-foreground">Rasio Kepatuhan Warga (Orang)</p>
-                                <div className="h-[150px] w-full flex justify-center">
+                                <div className="h-[150px] w-full flex justify-center min-w-0">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie

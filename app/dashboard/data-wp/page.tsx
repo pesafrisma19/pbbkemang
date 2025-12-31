@@ -853,6 +853,8 @@ export default function DataWPPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Nama Lengkap</label>
                             <Input
+                                name="fullName"
+                                id="fullName"
                                 placeholder="Contoh: Asep Saepudin"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -862,6 +864,8 @@ export default function DataWPPage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">NIK (KTP)</label>
                                 <Input
+                                    name="nik"
+                                    id="nik"
                                     placeholder="16 Digit NIK"
                                     value={formData.nik}
                                     onChange={(e) => setFormData({ ...formData, nik: e.target.value })}
@@ -870,6 +874,8 @@ export default function DataWPPage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">No. WhatsApp</label>
                                 <Input
+                                    name="whatsapp"
+                                    id="whatsapp"
                                     placeholder="08xxxxxxxx"
                                     value={formData.whatsapp}
                                     onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
@@ -880,6 +886,8 @@ export default function DataWPPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Alamat</label>
                             <Input
+                                name="address"
+                                id="address"
                                 placeholder="Dusun / Blok"
                                 value={formData.address}
                                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -978,6 +986,8 @@ export default function DataWPPage() {
                                                     3205130005000
                                                 </div>
                                                 <Input
+                                                    name="nopFast"
+                                                    id="nopFast"
                                                     placeholder="1466"
                                                     className="h-9 text-sm font-mono flex-1"
                                                     value={newAsset.nop.replace('3205130005000', '').slice(0, -1)}
@@ -993,6 +1003,8 @@ export default function DataWPPage() {
                                             </div>
                                         ) : (
                                             <Input
+                                                name="nopManual"
+                                                id="nopManual"
                                                 placeholder="3205xxxxxxxxxxxxxx"
                                                 className="h-9 text-sm"
                                                 value={newAsset.nop}
@@ -1010,6 +1022,8 @@ export default function DataWPPage() {
                                     <div className="space-y-2">
                                         <label className="text-xs font-medium">Lokasi Tanah</label>
                                         <Input
+                                            name="assetLoc"
+                                            id="assetLoc"
                                             placeholder="Blok Sawah..."
                                             className="h-9 text-sm"
                                             value={newAsset.loc}
@@ -1019,6 +1033,8 @@ export default function DataWPPage() {
                                     <div className="space-y-2">
                                         <label className="text-xs font-medium">Nominal Pajak</label>
                                         <Input
+                                            name="assetTax"
+                                            id="assetTax"
                                             type="number"
                                             className="h-9 text-sm"
                                             value={newAsset.tax}
@@ -1028,6 +1044,8 @@ export default function DataWPPage() {
                                     <div className="space-y-2 col-span-2">
                                         <label className="text-xs font-medium">Tahun Pajak</label>
                                         <Input
+                                            name="assetYear"
+                                            id="assetYear"
                                             type="number"
                                             className="h-9 text-sm w-full"
                                             value={newAsset.year}
@@ -1043,6 +1061,8 @@ export default function DataWPPage() {
                                     <div className="space-y-2">
                                         <label className="text-xs font-medium">Nama Asal/Sebelumnya</label>
                                         <Input
+                                            name="originalName"
+                                            id="originalName"
                                             placeholder="Nama pemilik lama..."
                                             className="h-9 text-sm"
                                             value={newAsset.original_name || ""}
@@ -1053,6 +1073,8 @@ export default function DataWPPage() {
                                         <div className="space-y-2">
                                             <label className="text-xs font-medium">Blok</label>
                                             <Input
+                                                name="assetBlok"
+                                                id="assetBlok"
                                                 placeholder="001"
                                                 className="h-9 text-sm"
                                                 value={newAsset.blok || ""}
@@ -1062,6 +1084,8 @@ export default function DataWPPage() {
                                         <div className="space-y-2">
                                             <label className="text-xs font-medium">Persil</label>
                                             <Input
+                                                name="assetPersil"
+                                                id="assetPersil"
                                                 placeholder="12a"
                                                 className="h-9 text-sm"
                                                 value={newAsset.persil || ""}
