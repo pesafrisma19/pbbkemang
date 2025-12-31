@@ -1102,19 +1102,19 @@ export default function DataWPPage() {
                     <div className="space-y-6">
                         {/* Summary Cards */}
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="col-span-2 sm:col-span-1 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30 p-3 rounded-xl flex flex-col items-center justify-center text-center">
-                                <span className="text-xs text-muted-foreground mb-1">Berhasil</span>
+                            <div className="col-span-2 sm:col-span-1 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 p-3 rounded-xl flex flex-col items-center justify-center text-center">
+                                <span className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Berhasil</span>
                                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                                     {importResult.newAssets}
                                 </div>
-                                <span className="text-[10px] text-green-600/80">Kikitir Tersimpan</span>
+                                <span className="text-[10px] text-green-600/80 dark:text-green-400/80">Kikitir Tersimpan</span>
                             </div>
-                            <div className="col-span-2 sm:col-span-1 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 p-3 rounded-xl flex flex-col items-center justify-center text-center">
-                                <span className="text-xs text-muted-foreground mb-1">Gagal/Dilewati</span>
+                            <div className="col-span-2 sm:col-span-1 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 p-3 rounded-xl flex flex-col items-center justify-center text-center">
+                                <span className="text-xs font-medium text-red-700 dark:text-red-300 mb-1">Gagal/Dilewati</span>
                                 <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                                     {importResult.skipped}
                                 </div>
-                                <span className="text-[10px] text-red-600/80">Baris Bermasalah</span>
+                                <span className="text-[10px] text-red-600/80 dark:text-red-400/80">Baris Bermasalah</span>
                             </div>
                         </div>
 
