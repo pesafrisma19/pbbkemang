@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/Button"
 import { Search, Loader2, MapPin, CheckCircle, TrendingUp, Building2, Globe, ExternalLink, Sun, Moon, Menu, X, Home as HomeIcon, MessageSquare } from "lucide-react"
 import Link from "next/link"
 import dynamic from 'next/dynamic'
-const PieChart = dynamic(() => import('recharts').then(mod => mod.PieChart), { ssr: false, loading: () => <div className="h-[220px] w-full bg-muted/20 animate-pulse rounded-full"></div> })
-const Pie = dynamic(() => import('recharts').then(mod => mod.Pie), { ssr: false })
-const Cell = dynamic(() => import('recharts').then(mod => mod.Cell), { ssr: false })
-const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false })
-const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false })
+const LandingPieChart = dynamic(() => import('@/components/features/LandingPieChart'), {
+  ssr: false,
+  loading: () => <div className="h-[220px] w-full bg-muted/20 animate-pulse rounded-full"></div>
+})
+
 import { useTheme } from "next-themes"
 
 export default function Home() {
@@ -39,7 +39,6 @@ export default function Home() {
     { name: 'Sudah Masuk (Lunas)', value: stats.paidAmount },
     { name: 'Belum Bayar (Potensi)', value: stats.unpaidAmount },
   ];
-  const COLORS = ['#16a34a', '#f97316']; // Green, Orange
 
   // Search State
   const [query, setQuery] = useState("")
@@ -315,7 +314,7 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="text-center space-y-4 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/20 text-primary-foreground dark:text-primary rounded-full text-xs font-bold uppercase tracking-wide mb-2 border border-primary/20">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary-700 dark:text-primary rounded-full text-xs font-bold uppercase tracking-wide mb-2 border border-primary/20">
             <CheckCircle size={12} /> Portal Resmi 2025
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground">
@@ -456,52 +455,29 @@ export default function Home() {
               <TrendingUp size={18} className="text-primary" />
               Rasio Kepatuhan
             </h2>
-            <p className="text-xs text-muted-foreground mb-6">Update Data Realtime</p>
+            <p className="text-xs text-foreground/70 mb-6">Update Data Realtime</p>
 
             <div className="w-full relative min-w-0">
               {/* Center Text */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none h-[220px]">
                 <span className="text-3xl font-extrabold text-foreground">{stats.percentage}%</span>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Realisasi</span>
+                <span className="text-[10px] text-foreground/60 uppercase tracking-widest">Realisasi</span>
               </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={65}
-                    outerRadius={85}
-                    cornerRadius={5}
-                    paddingAngle={4}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: any) => `Rp ${Number(value).toLocaleString('id-ID')}`}
-                    contentStyle={{ borderRadius: '12px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-card)', color: 'var(--color-foreground)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    itemStyle={{ color: 'var(--color-foreground)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <LandingPieChart data={chartData} />
             </div>
 
             <div className="flex justify-center gap-8 mt-4 text-xs font-medium w-full">
               <div className="text-center px-4 py-2 bg-muted/30 rounded-lg">
                 <div className="flex items-center gap-1.5 justify-center mb-1">
                   <div className="w-2 h-2 rounded-full bg-success"></div>
-                  <span className="text-muted-foreground">Sudah Masuk</span>
+                  <span className="text-foreground/70">Sudah Masuk</span>
                 </div>
                 <span className="font-bold text-foreground text-sm">Rp {(stats.paidAmount / 1000000).toFixed(1)} Jt</span>
               </div>
               <div className="text-center px-4 py-2 bg-muted/30 rounded-lg">
                 <div className="flex items-center gap-1.5 justify-center mb-1">
                   <div className="w-2 h-2 rounded-full bg-warning"></div>
-                  <span className="text-muted-foreground">Belum Bayar</span>
+                  <span className="text-foreground/70">Belum Bayar</span>
                 </div>
                 <span className="font-bold text-foreground text-sm">Rp {(stats.unpaidAmount / 1000000).toFixed(1)} Jt</span>
               </div>
@@ -531,7 +507,7 @@ export default function Home() {
               href="https://desakemang.my.id"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors bg-muted/50 px-5 py-2.5 rounded-full border border-border hover:border-primary/30"
+              className="flex items-center justify-center gap-2 text-foreground/70 hover:text-primary transition-colors bg-muted/50 px-5 py-2.5 rounded-full border border-border hover:border-primary/30"
             >
               <Globe size={16} />
               Website Desa Kemang
@@ -541,7 +517,7 @@ export default function Home() {
               href="https://pbbdesakemang.vercel.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors bg-muted/50 px-5 py-2.5 rounded-full border border-border hover:border-primary/30"
+              className="flex items-center justify-center gap-2 text-foreground/70 hover:text-primary transition-colors bg-muted/50 px-5 py-2.5 rounded-full border border-border hover:border-primary/30"
             >
               <CheckCircle size={16} />
               Bayar Pajak Online
@@ -550,7 +526,7 @@ export default function Home() {
           </div>
 
           <div className="pt-6 border-t border-border w-24 mx-auto"></div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-foreground/60">
             &copy; 2025 Pemerintah Desa Kemang &bull; All rights reserved
           </div>
         </div>
