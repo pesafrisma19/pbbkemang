@@ -453,13 +453,13 @@ export default function Home() {
             </h3>
             <p className="text-xs text-muted-foreground mb-6">Update Data Realtime</p>
 
-            <div className="h-[220px] w-full relative min-w-0">
+            <div className="w-full relative min-w-0">
               {/* Center Text */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none h-[220px]">
                 <span className="text-3xl font-extrabold text-foreground">{stats.percentage}%</span>
                 <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Realisasi</span>
               </div>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
                     data={chartData}
