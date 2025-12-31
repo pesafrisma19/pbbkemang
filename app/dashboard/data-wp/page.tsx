@@ -414,6 +414,8 @@ export default function DataWPPage() {
         fetchData()
     }, [fetchData])
 
+    const [editingAssetIndex, setEditingAssetIndex] = useState<number | null>(null)
+
     // --- Form Handlers ---
 
     const resetForm = () => {
@@ -422,13 +424,31 @@ export default function DataWPPage() {
         setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
         setShowAssetForm(false)
         setEditingId(null)
+        setEditingAssetIndex(null)
     }
 
     const handleAddAsset = () => {
         if (!newAsset.nop || !newAsset.tax) return;
-        setFormAssets([...formAssets, newAsset])
-        setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid' })
+
+        if (editingAssetIndex !== null) {
+            // Update Existing
+            const updated = [...formAssets]
+            updated[editingAssetIndex] = newAsset
+            setFormAssets(updated)
+            setEditingAssetIndex(null)
+        } else {
+            // Add New
+            setFormAssets([...formAssets, newAsset])
+        }
+
+        setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
         setShowAssetForm(false)
+    }
+
+    const handleEditAsset = (idx: number) => {
+        setEditingAssetIndex(idx)
+        setNewAsset(formAssets[idx])
+        setShowAssetForm(true)
     }
 
     const removeAsset = (idx: number) => {
@@ -906,6 +926,13 @@ export default function DataWPPage() {
                                     <div className="flex items-center gap-3">
                                         <span className="font-bold">Rp {Number(asset.tax).toLocaleString('id-ID')}</span>
                                         <button
+                                            onClick={() => handleEditAsset(idx)}
+                                            className="text-blue-600 hover:bg-blue-100 p-2 rounded-full transition-colors mr-1"
+                                            title="Edit Kikitir ini"
+                                        >
+                                            <Pencil size={16} />
+                                        </button>
+                                        <button
                                             onClick={() => removeAsset(idx)}
                                             className="text-destructive hover:bg-red-100 p-2 rounded-full transition-colors"
                                             title="Hapus Kikitir ini"
@@ -1037,8 +1064,13 @@ export default function DataWPPage() {
                                     </div>
                                 </div>
                                 <div className="flex gap-2 pt-1">
-                                    <Button size="sm" className="w-full" onClick={handleAddAsset}>Simpan ke List</Button>
-                                    <Button size="sm" variant="ghost" onClick={() => setShowAssetForm(false)}>Batal</Button>
+                                    <Button size="sm" className="w-full" onClick={handleAddAsset}>
+                                        {editingAssetIndex !== null ? 'Update List' : 'Simpan ke List'}
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={() => {
+                                        setShowAssetForm(false)
+                                        setEditingAssetIndex(null)
+                                    }}>Batal</Button>
                                 </div>
                             </div>
                         )}
