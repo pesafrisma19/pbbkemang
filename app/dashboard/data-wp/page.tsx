@@ -104,8 +104,8 @@ export default function DataWPPage() {
             "NAMA_ASAL", "PERSIL", "BLOK"
         ]
         const sample = [
-            ["Asep Saepudin", "Dusun Manis RT 01", "3204...", "0812...", "32.04.123...", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
-            ["Budi Santoso", "Dusun Pahing RT 02", "3204...", "0857...", "32.04.456...", "Rumah Tinggal", 125000, 2024, "LUNAS", "-", "12b", "005"]
+            ["Asep Saepudin", "Dusun Manis RT 01", "3204123456780001", "081234567890", "32.04.123...", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
+            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "32.04.456...", "Rumah Tinggal", 125000, 2024, "LUNAS", "", "12b", "005"]
         ]
 
         const wb = XLSX.utils.book_new()
@@ -138,18 +138,33 @@ export default function DataWPPage() {
                 // Process Data Row by Row
                 let successCount = 0
                 let newCitizenCount = 0
-                let matchedCitizenCount = 0 // New
+                let matchedCitizenCount = 0
                 let newAssetCount = 0
+                let failCount = 0;
 
                 for (const row of data as any[]) {
+                    // 1. Mandatory Fields Validation (Match Manual Form)
                     const nameRaw = row['NAMA_WP']
+                    const addressRaw = row['ALAMAT']
                     const nopRaw = row['NOP']
+                    const taxRaw = row['NOMINAL_PAJAK']
 
-                    if (!nameRaw || !nopRaw) continue;
+                    // Skip if critical data missing
+                    if (!nameRaw || !addressRaw || !nopRaw || !taxRaw) {
+                        failCount++;
+                        continue;
+                    }
 
                     const name = String(nameRaw).trim()
-                    const address = row['ALAMAT'] ? String(row['ALAMAT']).trim() : '-'
+                    const address = String(addressRaw).trim() // Required now
                     const nop = String(nopRaw).replace(/['"]/g, '').trim()
+                    const nominal = Number(taxRaw) || 0
+
+                    // Skip if Tax is 0 (Match Manual Form logic !newAsset.tax)
+                    if (nominal <= 0) {
+                        failCount++;
+                        continue;
+                    }
 
                     // 1. Find or Create Citizen
                     let citizenId = null
@@ -194,9 +209,6 @@ export default function DataWPPage() {
                         const statusRaw = String(row['STATUS_BAYAR'] || '').toUpperCase()
                         const status = statusRaw === 'LUNAS' ? 'paid' : 'unpaid'
 
-                        // Parse nominal (handle formatted strings if any)
-                        const nominal = Number(row['NOMINAL_PAJAK']) || 0
-
                         await supabase
                             .from('tax_objects')
                             .upsert({
@@ -216,7 +228,7 @@ export default function DataWPPage() {
                     }
                 }
 
-                alert(`Import Selesai!\n- Warga Baru: ${newCitizenCount}\n- Warga Lama (Match): ${matchedCitizenCount}\n- Total Aset/Kikitir Diproses: ${newAssetCount}`)
+                alert(`Import Selesai!\n- Warga Baru: ${newCitizenCount}\n- Warga Lama (Match): ${matchedCitizenCount}\n- Total Aset/Kikitir Diproses: ${newAssetCount}\n- Gagal/Skip (Data Tidak Lengkap): ${failCount}`)
                 fetchData() // Refresh list
 
             } catch (err) {
