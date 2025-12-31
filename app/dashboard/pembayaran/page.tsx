@@ -277,12 +277,12 @@ export default function PembayaranPage() {
                             {/* List of Tax Objects */}
                             <div className="divide-y">
                                 {group.tax_objects.map((item) => (
-                                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-green-50/50 dark:bg-green-900/20' : 'hover:bg-muted/20'}`}>
+                                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-success/10' : 'hover:bg-muted/20'}`}>
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                             {/* Item Details */}
                                             <div className="flex-1 space-y-1">
                                                 <div className="flex items-center gap-2 text-sm font-medium">
-                                                    <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
+                                                    <span className="bg-muted text-foreground px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
                                                     <span>{item.location}</span>
                                                     <span className="text-muted-foreground">• Thn {item.year}</span>
                                                 </div>
@@ -295,12 +295,12 @@ export default function PembayaranPage() {
                                                         </span>
                                                     )}
                                                     {item.blok && (
-                                                        <span className="bg-slate-50 dark:bg-slate-800 px-1.5 rounded border border-slate-100 dark:border-slate-700">
+                                                        <span className="bg-muted/50 px-1.5 rounded border border-border">
                                                             Blok: {item.blok}
                                                         </span>
                                                     )}
                                                     {item.persil && (
-                                                        <span className="bg-slate-50 dark:bg-slate-800 px-1.5 rounded border border-slate-100 dark:border-slate-700">
+                                                        <span className="bg-muted/50 px-1.5 rounded border border-border">
                                                             Persil: {item.persil}
                                                         </span>
                                                     )}
@@ -312,7 +312,7 @@ export default function PembayaranPage() {
                                                 <div className="text-right min-w-[100px]">
                                                     <p className="font-bold text-sm">Rp {Number(item.amount).toLocaleString('id-ID')}</p>
                                                     {item.paid && item.paidAt && (
-                                                        <div className="text-[10px] text-green-600 dark:text-green-400 flex items-center justify-end gap-1">
+                                                        <div className="text-[10px] text-success flex items-center justify-end gap-1">
                                                             <CalendarDays size={10} />
                                                             {formatDate(item.paidAt)}
                                                         </div>
