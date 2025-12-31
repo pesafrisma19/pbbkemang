@@ -796,13 +796,7 @@ export default function DataWPPage() {
                 />
             </div>
 
-            {/* Legend / Info */}
-            <div className="flex items-center gap-4 px-2 text-xs text-muted-foreground pb-2">
-                <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    <span>1 NOP Banyak Pemilik (Shared)</span>
-                </div>
-            </div>
+
 
             {items.length === 0 && !isLoading ? (
                 <div className="text-center py-12 text-muted-foreground">
