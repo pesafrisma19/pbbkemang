@@ -1146,7 +1146,7 @@ export default function DataWPPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center py-4 bg-green-50/50 rounded-lg border border-green-100 text-green-600 text-sm">
+                            <div className="text-center py-4 bg-green-50 dark:bg-green-500/10 rounded-lg border border-green-200 dark:border-green-500/20 text-green-700 dark:text-green-300 text-sm font-medium">
                                 ✅ Semua data berhasil diimport tanpa error!
                             </div>
                         )}
