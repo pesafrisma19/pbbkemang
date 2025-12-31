@@ -278,6 +278,16 @@ export default function Home() {
             <span className="font-bold text-lg tracking-tight text-foreground md:hidden">PBB Kemang</span>
           </div>
 
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-6 absolute left-1/2 transform -translate-x-1/2">
+            <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Beranda
+            </Link>
+            <Link href="#" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+              Pengaduan
+            </Link>
+          </nav>
+
           <div className="flex items-center gap-3">
             {/* Theme Toggle */}
             <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full text-muted-foreground hover:text-foreground hover:bg-muted">
