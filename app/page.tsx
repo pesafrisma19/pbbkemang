@@ -314,7 +314,7 @@ export default function Home() {
       <main className="flex-1 pt-24 pb-12 px-4 container mx-auto flex flex-col items-center gap-12">
 
         {/* Hero Section */}
-        <div className="text-center space-y-4 max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="text-center space-y-4 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold uppercase tracking-wide mb-2 border border-primary/20">
             <CheckCircle size={12} /> Portal Resmi 2025
           </div>

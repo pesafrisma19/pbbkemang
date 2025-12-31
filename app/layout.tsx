@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], display: 'swap' });
 
 export const metadata: Metadata = {
   title: "PBB Kemang - Cek Status Pajak",
@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://ozvzyubnftcteqjjedlx.supabase.co" />
+        <link rel="preconnect" href="https://ozvzyubnftcteqjjedlx.supabase.co" crossOrigin="anonymous" />
       </head>
       <body className={inter.className}>
         <ThemeProvider
