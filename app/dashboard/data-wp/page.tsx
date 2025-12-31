@@ -588,12 +588,12 @@ export default function DataWPPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
                     Data Wajib Pajak
                     {isLoading && <Loader2 className="animate-spin h-5 w-5 text-muted-foreground" />}
                 </h2>
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <input
                         type="file"
                         accept=".xlsx, .xls"
