@@ -478,7 +478,7 @@ export default function DataWPPage() {
 
                                 if (matchParts.length > 0) {
                                     return (
-                                        <Badge key={a.nop} variant="outline" className="mr-1 text-[10px] h-4 px-1 font-normal bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200">
+                                        <Badge key={a.nop} variant="outline" className="mr-1 text-[10px] h-4 px-1 font-normal bg-warning/10 text-warning border-warning/20">
                                             {matchParts.join(", ")}
                                         </Badge>
                                     )
@@ -497,7 +497,7 @@ export default function DataWPPage() {
                             href={getWaLink(wp.whatsapp)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-green-100 text-green-600 p-1.5 rounded-full hover:bg-green-200 transition-colors"
+                            className="bg-success/10 text-success p-1.5 rounded-full hover:bg-success/20 transition-colors"
                             onClick={(e) => e.stopPropagation()}
                             title="Chat WhatsApp"
                         >
@@ -512,7 +512,7 @@ export default function DataWPPage() {
             </div>
         ),
         content: (
-            <div className="space-y-3 pt-2 border-t">
+            <div className="space-y-3 pt-2 border-t border-border">
                 {/* Meta Info */}
                 <div className="flex gap-4 text-xs text-muted-foreground pb-2">
                     <div className="flex items-center gap-1">
@@ -530,8 +530,8 @@ export default function DataWPPage() {
                                 </p>
                                 <p className="text-xs font-mono text-muted-foreground">
                                     {asset.nop}
-                                    {asset.blok && <span className="ml-2 font-sans bg-slate-100 px-1 rounded">Blok {asset.blok}</span>}
-                                    {asset.persil && <span className="ml-1 font-sans bg-slate-100 px-1 rounded">Persil {asset.persil}</span>}
+                                    {asset.blok && <span className="ml-2 font-sans bg-muted text-foreground px-1 rounded">Blok {asset.blok}</span>}
+                                    {asset.persil && <span className="ml-1 font-sans bg-muted text-foreground px-1 rounded">Persil {asset.persil}</span>}
 
                                     {/* Global Shared Indicator */}
                                     {nopOwnersMap[asset.nop] && nopOwnersMap[asset.nop].length > 1 && (
@@ -540,10 +540,10 @@ export default function DataWPPage() {
                                                 e.preventDefault();
                                                 setDetailNop(asset.nop)
                                             }}
-                                            className="ml-2 inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-sans hover:bg-amber-200 transition-colors"
+                                            className="ml-2 inline-flex items-center gap-1 bg-warning/10 text-warning px-1.5 py-0.5 rounded text-[10px] font-sans hover:bg-warning/20 transition-colors"
                                             title="Klik untuk lihat detail pemilik"
                                         >
-                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></div>
                                             {nopOwnersMap[asset.nop].length} Pemilik
                                         </button>
                                     )}
