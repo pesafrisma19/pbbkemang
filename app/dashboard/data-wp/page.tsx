@@ -103,13 +103,29 @@ export default function DataWPPage() {
             "NAMA_WP", "ALAMAT", "NIK", "WHATSAPP", "NOP", "LOKASI_OBJEK", "NOMINAL_PAJAK", "TAHUN_PAJAK", "STATUS_BAYAR",
             "NAMA_ASAL", "PERSIL", "BLOK"
         ]
+
+        // Sample Data:
+        // 1. Asep Saepudin (1 Asset)
+        // 2. Budi Santoso (2 Assets - Row 2 & 3 have same Name/Address)
+        // Note: NOP format uses the full string (Standard 32.05...) to match system expectations.
         const sample = [
-            ["Asep Saepudin", "Dusun Manis RT 01", "3204123456780001", "081234567890", "32.04.123...", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
-            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "32.04.456...", "Rumah Tinggal", 125000, 2024, "LUNAS", "", "12b", "005"]
+            // WP 1: Asep - 1 Kikitir
+            ["Asep Saepudin", "Dusun Manis RT 01", "3204123456780001", "081234567890", "32.05.130.005.000.1000.7", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
+
+            // WP 2: Budi - Kikitir 1
+            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "32.05.130.005.000.2001.7", "Rumah Tinggal", 125000, 2024, "LUNAS", "-", "12b", "005"],
+
+            // WP 2: Budi - Kikitir 2 (Same Name & Address = Same WP)
+            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "32.05.130.005.000.2002.7", "Kebun Jati", 75000, 2024, "BELUM", "-", "12c", "005"]
         ]
 
         const wb = XLSX.utils.book_new()
         const ws = XLSX.utils.aoa_to_sheet([headers, ...sample])
+
+        // Auto-width for better visibility
+        const wscols = headers.map(() => ({ wch: 20 }))
+        ws['!cols'] = wscols
+
         XLSX.utils.book_append_sheet(wb, ws, "Template_PBB")
         XLSX.writeFile(wb, "Template_Import_PBB.xlsx")
     }
@@ -127,6 +143,7 @@ export default function DataWPPage() {
                 const wb = XLSX.read(bstr, { type: 'binary' })
                 const wsname = wb.SheetNames[0]
                 const ws = wb.Sheets[wsname]
+                // Parse with header: 1 to get raw arrays or default to get objects. Using default but ensuring keys match.
                 const data = XLSX.utils.sheet_to_json(ws)
 
                 if (data.length === 0) {
@@ -135,81 +152,109 @@ export default function DataWPPage() {
                     return
                 }
 
-                // Process Data Row by Row
-                let successCount = 0
+                // Stats
                 let newCitizenCount = 0
                 let matchedCitizenCount = 0
                 let newAssetCount = 0
-                let failCount = 0;
+                let skippedCount = 0
+                const errorLog: string[] = []
 
-                for (const row of data as any[]) {
-                    // 1. Mandatory Fields Validation (Match Manual Form)
+                // Cache created citizens in this session to minimize API calls for consecutive rows
+                // Key: "name|address" -> ID
+                const sessionCitizens: Record<string, string> = {}
+
+                for (let i = 0; i < data.length; i++) {
+                    const row = data[i] as any
+                    const rowNum = i + 2 // Excellence uses 1-based, +1 for header
+
+                    // 1. Parse Fields
                     const nameRaw = row['NAMA_WP']
                     const addressRaw = row['ALAMAT']
-                    const nopRaw = row['NOP']
+                    let nopRaw = row['NOP']
                     const taxRaw = row['NOMINAL_PAJAK']
 
-                    // Skip if critical data missing
-                    if (!nameRaw || !addressRaw || !nopRaw || !taxRaw) {
-                        failCount++;
-                        continue;
+                    // Validation Message Helpers
+                    const missingFields = []
+                    if (!nameRaw) missingFields.push("NAMA_WP")
+                    if (!addressRaw) missingFields.push("ALAMAT")
+                    if (!nopRaw) missingFields.push("NOP")
+                    if (!taxRaw) missingFields.push("NOMINAL_PAJAK")
+
+                    if (missingFields.length > 0) {
+                        errorLog.push(`Baris ${rowNum}: Data tidak lengkap (${missingFields.join(", ")})`)
+                        skippedCount++
+                        continue
                     }
 
                     const name = String(nameRaw).trim()
-                    const address = String(addressRaw).trim() // Required now
-                    const nop = String(nopRaw).replace(/['"]/g, '').trim()
+                    const address = String(addressRaw).trim()
                     const nominal = Number(taxRaw) || 0
 
-                    // Skip if Tax is 0 (Match Manual Form logic !newAsset.tax)
+                    // NOP Handling: Ensure it's a string even if Excel thinks it's a number
+                    // If user input 3205... without dots, we keep it as is. 
+                    // Suggestion: Use Full Format with dots in Template.
+                    let nop = String(nopRaw).trim().replace(/['"]/g, '')
+
                     if (nominal <= 0) {
-                        failCount++;
-                        continue;
+                        errorLog.push(`Baris ${rowNum}: Nominal Pajak 0 atau invalid`)
+                        skippedCount++
+                        continue
                     }
 
-                    // 1. Find or Create Citizen
-                    let citizenId = null
+                    // 2. Find or Create Citizen
+                    const citizenKey = `${name.toLowerCase()}|${address.toLowerCase()}`
+                    let citizenId = sessionCitizens[citizenKey]
 
-                    // Cleanup phone
+                    // Prepare metadata
                     let phone = row['WHATSAPP'] ? String(row['WHATSAPP']).replace(/\D/g, '') : null
                     if (phone && phone.startsWith('0')) phone = '62' + phone.substring(1)
 
-                    const citizenPayload = {
-                        name: name,
-                        address: address,
-                        nik: row['NIK'] ? String(row['NIK']).trim() : null,
-                        whatsapp: phone
-                    }
-
-                    // Try to find existing citizen first
-                    const { data: existing, error: findError } = await supabase
-                        .from('citizens')
-                        .select('id')
-                        .eq('name', name) // We use exact match
-                        .eq('address', address)
-                        .maybeSingle()
-
-                    if (existing) {
-                        citizenId = existing.id
-                        matchedCitizenCount++
-                    } else {
-                        const { data: newCitizen, error: createError } = await supabase
+                    if (!citizenId) {
+                        // Check Database
+                        const { data: existing } = await supabase
                             .from('citizens')
-                            .insert(citizenPayload)
                             .select('id')
-                            .single()
+                            .eq('name', name)
+                            .eq('address', address)
+                            .maybeSingle()
 
-                        if (!createError) {
+                        if (existing) {
+                            citizenId = existing.id
+                            matchedCitizenCount++
+                        } else {
+                            // Create New
+                            const { data: newCitizen, error: createError } = await supabase
+                                .from('citizens')
+                                .insert({
+                                    name: name,
+                                    address: address,
+                                    nik: row['NIK'] ? String(row['NIK']).trim() : null,
+                                    whatsapp: phone
+                                })
+                                .select('id')
+                                .single()
+
+                            if (createError) {
+                                errorLog.push(`Baris ${rowNum}: Gagal buat WP (${createError.message})`)
+                                skippedCount++
+                                continue
+                            }
                             citizenId = newCitizen.id
                             newCitizenCount++
                         }
+                        // Save to session cache
+                        sessionCitizens[citizenKey] = citizenId
+                    } else {
+                        // Already processed in this batch (e.g. Row 2 was Budi, Row 3 is Budi again)
+                        matchedCitizenCount++
                     }
 
-                    // 2. Upsert Tax Object
+                    // 3. Upsert Tax Object (Kikitir)
                     if (citizenId) {
                         const statusRaw = String(row['STATUS_BAYAR'] || '').toUpperCase()
                         const status = statusRaw === 'LUNAS' ? 'paid' : 'unpaid'
 
-                        await supabase
+                        const { error: upsertError } = await supabase
                             .from('tax_objects')
                             .upsert({
                                 nop: nop,
@@ -223,18 +268,35 @@ export default function DataWPPage() {
                                 blok: row['BLOK'] ? String(row['BLOK']) : null
                             }, { onConflict: 'nop, citizen_id' })
 
-                        newAssetCount++
-                        successCount++
+                        if (upsertError) {
+                            errorLog.push(`Baris ${rowNum}: Gagal simpan Kikitir/NOP ${nop} (${upsertError.message})`)
+                            // Don't increment newAssetCount
+                        } else {
+                            newAssetCount++
+                        }
                     }
                 }
 
-                alert(`Import Selesai!\n- Warga Baru: ${newCitizenCount}\n- Warga Lama (Match): ${matchedCitizenCount}\n- Total Aset/Kikitir Diproses: ${newAssetCount}\n- Gagal/Skip (Data Tidak Lengkap): ${failCount}`)
-                fetchData() // Refresh list
+                // Summary Alert
+                let message = `Import Selesai!\n\n` +
+                    `✅ ${newCitizenCount} WP Baru Ditambahkan\n` +
+                    `✅ ${matchedCitizenCount} WP Lama Terdeteksi/Duplicate\n` +
+                    `✅ ${newAssetCount} Kikitir Berhasil Disimpan\n`
+
+                if (skippedCount > 0 || errorLog.length > 0) {
+                    message += `\n⚠️ ${skippedCount} Baris Gagal/Dilewati.\n` +
+                        `---------------------\n` +
+                        errorLog.slice(0, 5).join('\n') +
+                        (errorLog.length > 5 ? `\n...dan ${errorLog.length - 5} error lainnya.` : '')
+                }
+
+                alert(message)
+                fetchData()
 
             } catch (err) {
                 console.error("Import Error:", err)
                 const msg = err instanceof Error ? err.message : String(err)
-                alert("Gagal import file: " + msg)
+                alert("Critical Error saat membaca file: " + msg)
             } finally {
                 setIsImporting(false)
                 if (fileInputRef.current) fileInputRef.current.value = "" // Reset input
