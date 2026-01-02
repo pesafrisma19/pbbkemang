@@ -109,7 +109,7 @@ export default function DataWPPage() {
     const [localData, setLocalData] = useState<WPData[]>([])
 
     const filteredData = localData.filter(wp =>
-        wp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (wp.name && wp.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (wp.group_name && wp.group_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
         wp.assets.some(a =>
             a.nop.includes(searchTerm) ||
@@ -451,7 +451,7 @@ export default function DataWPPage() {
             setFilteredGroups(groups)
         } else {
             const lower = formData.group_name.toLowerCase()
-            const match = groups.filter(g => g.name.toLowerCase().includes(lower))
+            const match = groups.filter(g => g.name && g.name.toLowerCase().includes(lower))
             setFilteredGroups(match)
         }
     }, [formData.group_name, groups])
