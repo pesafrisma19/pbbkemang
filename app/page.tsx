@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/Card"
 import { Input } from "@/components/ui/Input"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
-import { Search, Loader2, MapPin, CheckCircle, TrendingUp, Building2, Globe, ExternalLink, Sun, Moon, Menu, X, Home as HomeIcon, MessageSquare } from "lucide-react"
+import { Search, Loader2, MapPin, CheckCircle, TrendingUp, Building2, Globe, ExternalLink, Sun, Moon, Menu, X, Home as HomeIcon, MessageSquare, Users, ChevronDown, ChevronUp } from "lucide-react"
 import Link from "next/link"
 import dynamic from 'next/dynamic'
 const LandingPieChart = dynamic(() => import('@/components/features/LandingPieChart'), {
@@ -92,36 +92,85 @@ export default function Home() {
         // 1. Search by Citizen Name
         const { data: nameHits } = await supabase
           .from('citizens')
-          .select('id')
+          .select('id, group_id')
           .ilike('name', `%${query}%`)
           .limit(20)
 
-        // 2. Search by Asset Fields (NOP, Original Name, Blok, Persil)
+        // 2. Search by Group Name
+        const { data: groupHits } = await supabase
+          .from('citizen_groups')
+          .select('id')
+          .ilike('name', `%${query}%`)
+          .limit(10)
+
+        // 3. Search by Asset Fields (NOP, Original Name, Blok, Persil)
         const { data: assetHits } = await supabase
           .from('tax_objects')
           .select('citizen_id')
           .or(`nop.ilike.%${query}%,original_name.ilike.%${query}%,blok.ilike.%${query}%,persil.ilike.%${query}%`)
           .limit(20)
 
-        // 3. Combine IDs
-        const ids = new Set<string>()
-        nameHits?.forEach(x => ids.add(x.id))
-        assetHits?.forEach(x => ids.add(x.citizen_id))
-        const uniqueIds = Array.from(ids)
+        // 4. Collect IDs
+        const explicitCitizenIds = new Set<string>()
+        const targetGroupIds = new Set<string>()
 
-        if (uniqueIds.length === 0) {
+        nameHits?.forEach(x => {
+          explicitCitizenIds.add(x.id)
+          if (x.group_id) targetGroupIds.add(x.group_id)
+        })
+
+        groupHits?.forEach(x => targetGroupIds.add(x.id))
+
+        assetHits?.forEach(x => explicitCitizenIds.add(x.citizen_id))
+
+        // If we have asset hits, we need to check if those citizens belong to a group
+        // But doing a separate query usually is fine or we just let "fetch full" handle it.
+        // Optimization: Just query all explicit citizens first to get their group_ids, then expand?
+        // Let's iterate: We have explicitCitizenIds. We want to fetch them. 
+        // If they have a group_id, we want to fetch their siblings too.
+
+        // 5. Construct Filter
+        // We want: WHERE (id IN explicitCitizenIds) OR (group_id IN targetGroupIds)
+        // But supabase "or" syntax with "in" is tricky.
+        // Easier: Fetch citizens where ID in explicitCitizenIds. Collect their group_ids.
+        // Then merge with targetGroupIds. Then fetch ALL by group_id.
+        // Finally merge results.
+
+        let allGroupIds = Array.from(targetGroupIds);
+        let allCitizenIds = Array.from(explicitCitizenIds);
+
+        if (allCitizenIds.length === 0 && allGroupIds.length === 0) {
           setResults([])
           setIsSearching(false)
           return
         }
 
-        // 4. Fetch Full Data for these IDs (QUERY BERSIH - TANPA KOMENTAR DI DALAM STRING)
-        const { data } = await supabase
-          .from('citizens')
-          .select(`
+        // Fetch Initial Citizens to discover more groups
+        if (allCitizenIds.length > 0) {
+          const { data: initialCitizens } = await supabase
+            .from('citizens')
+            .select('group_id')
+            .in('id', allCitizenIds)
+
+          initialCitizens?.forEach(c => {
+            if (c.group_id) allGroupIds.push(c.group_id)
+          })
+        }
+
+        // Deduplicate
+        allGroupIds = Array.from(new Set(allGroupIds));
+
+        // 6. FINAL DATA FETCH
+        // Condition: group_id IN allGroupIds OR id IN allCitizenIds
+        // Note: If a citizen is in a group in allGroupIds, they will be fetched by the first condition.
+        // So we just need to be careful not to fetch duplicates? Supabase returns rows.
+
+        let queryBuilder = supabase.from('citizens').select(`
             id,
             name,
             address,
+            group_id,
+            citizen_groups ( id, name ),
             tax_objects (
               nop,
               location_name,
@@ -132,89 +181,106 @@ export default function Home() {
               blok,
               persil
             )
-          `)
-          .in('id', uniqueIds)
-          .limit(20);
+        `)
 
-        const flats: any[] = [];
-        data?.forEach((c: any) => {
-          if (c.tax_objects?.length > 0) {
-            c.tax_objects.forEach((t: any) => {
-              const matchesName = c.name.toLowerCase().includes(query.toLowerCase())
-              const searchClean = query.replace(/[.]/g, '');
-              const matchesAsset =
-                t.nop.includes(searchClean) ||
-                t.original_name?.toLowerCase().includes(query.toLowerCase()) ||
-                t.blok?.toLowerCase().includes(query.toLowerCase()) ||
-                t.persil?.toLowerCase().includes(query.toLowerCase());
-
-              if (matchesName || matchesAsset) {
-                flats.push({
-                  id: c.id,
-                  name: c.name,
-                  address: c.address,
-                  nop: t.nop.replace(/[.]/g, ''),
-                  raw_nop: t.nop, // Keep raw for querying
-                  loc: t.location_name,
-                  year: t.year || '-',
-                  amount: t.amount_due,
-                  status: t.status,
-                  original_name: t.original_name,
-                  blok: t.blok,
-                  persil: t.persil,
-                  other_owners: []
-                })
-              }
-            })
-          }
-        });
-
-        // 5. Fetch Shared NOP Info
-        const resultNops = flats.map(f => f.raw_nop);
-        if (resultNops.length > 0) {
-          const { data: sharedObjects } = await supabase
-            .from('tax_objects')
-            .select(`
-              nop,
-              amount_due,
-              citizens (
-                id,
-                name,
-                address
-              )
-            `)
-            .in('nop', resultNops);
-
-          if (sharedObjects && sharedObjects.length > 0) {
-            const nopMap: Record<string, any[]> = {};
-
-            sharedObjects.forEach((obj: any) => {
-              if (obj.citizens) {
-                // Normalize key to dot-less to match flat.nop
-                const key = obj.nop.replace(/[.]/g, '');
-                if (!nopMap[key]) nopMap[key] = [];
-
-                nopMap[key].push({
-                  id: obj.citizens.id,
-                  name: obj.citizens.name,
-                  address: obj.citizens.address || '-',
-                  amount: obj.amount_due
-                });
-              }
-            });
-
-            flats.forEach(f => {
-              if (nopMap[f.nop]) {
-                const others = nopMap[f.nop].filter((o: any) => String(o.id) !== String(f.id));
-                if (others.length > 0) {
-                  f.other_owners = others;
-                }
-              }
-            });
-          }
+        if (allGroupIds.length > 0 && allCitizenIds.length > 0) {
+          queryBuilder = queryBuilder.or(`group_id.in.(${allGroupIds.join(',')}),id.in.(${allCitizenIds.join(',')})`)
+        } else if (allGroupIds.length > 0) {
+          queryBuilder = queryBuilder.in('group_id', allGroupIds)
+        } else {
+          queryBuilder = queryBuilder.in('id', allCitizenIds)
         }
 
-        setResults(flats);
+        const { data: rawData } = await queryBuilder.limit(50); // increased limit for groups
+
+        // 7. Process & Group Results
+        // We want to structure: 
+        // [ { type: 'group', group: {...}, members: [...] }, { type: 'individual', ... } ]
+
+        const processedGroups: Record<string, { group: any, members: any[] }> = {}
+        const processedIndividuals: any[] = []
+
+        rawData?.forEach((c: any) => {
+          // Flatten Assets
+          const assets = c.tax_objects?.map((t: any) => ({
+            nop: t.nop.replace(/[.]/g, ''),
+            raw_nop: t.nop,
+            loc: t.location_name,
+            year: t.year || '-',
+            amount: t.amount_due,
+            status: t.status,
+            original_name: t.original_name,
+            blok: t.blok,
+            persil: t.persil
+          })) || []
+
+          const citizenData = {
+            id: c.id,
+            name: c.name,
+            address: c.address,
+            assets: assets,
+            group_id: c.group_id,
+            group_name: c.citizen_groups?.name
+          }
+
+          if (c.group_id && c.citizen_groups) {
+            if (!processedGroups[c.group_id]) {
+              processedGroups[c.group_id] = {
+                group: { id: c.citizen_groups.id, name: c.citizen_groups.name },
+                members: []
+              }
+            }
+            processedGroups[c.group_id].members.push(citizenData)
+          } else {
+            // Individual
+            // Only add if it matches the search criteria directly? 
+            // (It must, since we fetched by IDs).
+            // But wait, if we fetched by Group, we get all members. 
+            // If we fetched by Name, we got the specific person.
+
+            // For individual, display flat list of assets? 
+            // Existing UI expects a flattened object per asset? 
+            // The OLD UI mapped results = flats (1 row per asset).
+            // BUT we want to show Group Cards.
+            // Hybrid Approach:
+            // - If Group: Show Group Card.
+            // - If Individual: Show Individual Card (aggregating assets) OR 1 row per asset?
+            // The User asked: "bisa jadi 1 gth di daftar listya" (One item in the list).
+            // So Individual should also be aggregated per Person? 
+            // Existing code: `flats.push({ ... })` per Asset.
+            // Let's stick to Aggregated Person Card for Individuals to be consistent with Group Card.
+            // OR KEEP Old Logic for non-groups? 
+            // "1 orang bisa lebih dari 1 sppt" -> Old logic handled this by showing multiple cards or 1 card?
+            // Old logic: `flats.push` inside `c.tax_objects.forEach`. It showed 1 card PER ASSET.
+            // User Request: "1 orang bisa lebih dari 1 sppt... aku ingin buat 1 group... nama beda nik beda tapi bisa jadi 1 gth".
+            // This implies they want Aggregation.
+            // So I should probably switch to "1 Card per Person" (or Group) instead of "1 Card per Asset".
+
+            processedIndividuals.push(citizenData)
+          }
+        })
+
+        // Convert to Array
+        const finalResults = [
+          ...Object.values(processedGroups).map(g => ({ type: 'group', ...g })),
+          ...processedIndividuals.map(i => ({ type: 'individual', ...i }))
+        ]
+
+        // Calculate Totals for sorting/display
+        finalResults.forEach((r: any) => {
+          if (r.type === 'group') {
+            r.totalAmount = r.members.reduce((sum: number, m: any) => sum + m.assets.reduce((a: number, s: any) => a + s.amount, 0), 0)
+            r.totalAssets = r.members.reduce((sum: number, m: any) => sum + m.assets.length, 0)
+            r.unpaidCount = r.members.reduce((sum: number, m: any) => sum + m.assets.filter((a: any) => a.status !== 'paid').length, 0)
+          } else {
+            r.totalAmount = r.assets.reduce((sum: number, a: any) => sum + a.amount, 0)
+            r.totalAssets = r.assets.length
+            r.unpaidCount = r.assets.filter((a: any) => a.status !== 'paid').length
+            r.status = r.unpaidCount === 0 && r.totalAssets > 0 ? 'paid' : 'unpaid' // Derived status
+          }
+        })
+
+        setResults(finalResults)
       } catch (err) {
         console.error(err)
       } finally {
@@ -347,67 +413,64 @@ export default function Home() {
             <div className="mt-4 space-y-3">
               {results.length > 0 ? (
                 results.map((r, i) => (
-                  <div key={i} className="bg-card p-4 rounded-xl border border-border shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group cursor-default">
-                    <div className="flex flex-col w-full">
-                      <div className="flex justify-between items-start w-full">
-                        <span className="font-bold text-foreground group-hover:text-primary transition-colors text-base">{r.name}</span>
-                        <div className={`sm:hidden text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-full ${r.status === 'paid' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
-                          {r.status === 'paid' ? 'LUNAS' : 'BELUM'}
+                  <div key={i} className="bg-card w-full rounded-xl border border-border shadow-sm hover:shadow-md transition-all overflow-hidden group">
+
+                    {/* Header: Name or Group Name */}
+                    <div className="p-4 border-b border-border/50 bg-muted/20 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${r.type === 'group' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                          {r.type === 'group' ? <Users size={18} /> : <Building2 size={18} />}
                         </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <span className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">{r.nop}</span>
-                        <span className="flex items-center gap-1"><MapPin size={10} /> {r.loc} • {r.year}</span>
-                      </div>
-
-                      {/* Search Matches & Details */}
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {r.blok && (
-                          <Badge variant="outline" className={`text-[10px] h-5 px-1.5 ${r.blok.toLowerCase().includes(query.toLowerCase()) ? 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800' : 'bg-muted text-muted-foreground border-border'}`}>
-                            Blok {r.blok}
-                          </Badge>
-                        )}
-                        {r.persil && (
-                          <Badge variant="outline" className={`text-[10px] h-5 px-1.5 ${r.persil.toLowerCase().includes(query.toLowerCase()) ? 'bg-warning/10 text-warning border-warning/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                            Persil {r.persil}
-                          </Badge>
-                        )}
-                        {r.original_name && (
-                          <Badge variant="outline" className={`text-[10px] h-5 px-1.5 ${r.original_name.toLowerCase().includes(query.toLowerCase()) ? 'bg-warning/10 text-warning border-warning/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                            Ex: {r.original_name}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Expanded NOP Info */}
-                      {r.other_owners && r.other_owners.length > 0 && (
-                        <div className="mt-3 bg-muted/30 border border-muted rounded-lg overflow-hidden animate-in fade-in">
-                          <div className="px-3 py-1.5 bg-muted/50 border-b border-muted flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-warning"></div>
-                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Gabungan NOP:</span>
-                          </div>
-                          <div className="flex flex-col divide-y divide-border/50">
-                            {r.other_owners.map((owner: any, idx: number) => (
-                              <div key={idx} className="flex justify-between items-center px-3 py-2 hover:bg-muted/30">
-                                <div>
-                                  <div className="text-[11px] font-bold text-foreground">{owner.name}</div>
-                                  <div className="text-[10px] text-muted-foreground">{owner.address}</div>
-                                </div>
-                                <span className="text-[10px] font-mono text-muted-foreground">Rp {owner.amount.toLocaleString('id-ID')}</span>
-                              </div>
-                            ))}
+                        <div>
+                          <h3 className="font-bold text-foreground text-base">
+                            {r.type === 'group' ? `Kelompok: ${r.group.name}` : r.name}
+                          </h3>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            {r.type === 'group' ? (
+                              <span>{r.members.length} Anggota</span>
+                            ) : (
+                              <span>{r.address}</span>
+                            )}
                           </div>
                         </div>
-                      )}
-
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-lg text-foreground">Rp {r.totalAmount.toLocaleString('id-ID')}</div>
+                        <div className={`text-[10px] font-bold uppercase tracking-wider ${r.unpaidCount === 0 ? 'text-success' : 'text-warning'}`}>
+                          {r.unpaidCount === 0 && r.totalAssets > 0 ? 'LUNAS' : `BELUM LUNAS (${r.unpaidCount})`}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="hidden sm:block text-right min-w-max">
-                      <div className="font-bold text-foreground text-lg">Rp {r.amount.toLocaleString('id-ID')}</div>
-                      <div className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${r.status === 'paid' ? 'text-success' : 'text-destructive'}`}>
-                        {r.status === 'paid' ? 'LUNAS' : 'BELUM BAYAR'}
-                      </div>
+                    {/* Content: List of Taxes */}
+                    <div className="p-0">
+                      {r.type === 'group' ? (
+                        <div className="divide-y divide-border/50">
+                          {r.members.map((m: any, idx: number) => (
+                            <div key={idx} className="p-3 pl-12 bg-card/50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="font-semibold text-sm">{m.name}</span>
+                                <span className="text-xs text-muted-foreground">({m.address})</span>
+                              </div>
+                              <div className="space-y-2">
+                                {m.assets.map((asset: any, aidx: number) => (
+                                  <AssetRow key={aidx} asset={asset} query={query} />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 space-y-3">
+                          {r.assets.length > 0 ? (
+                            r.assets.map((asset: any, aidx: number) => (
+                              <AssetRow key={aidx} asset={asset} query={query} />
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic">Tidak ada data aset.</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -555,6 +618,39 @@ function StatsCard({ title, value, desc, color, icon }: any) {
       <span className="text-xs text-foreground/60 flex items-center gap-1">
         {desc}
       </span>
+    </div>
+  )
+}
+
+function AssetRow({ asset, query }: { asset: any, query: string }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded hover:bg-muted/50 transition-colors">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+          <span className="font-mono bg-muted px-1 rounded">{asset.nop}</span>
+          <span>{asset.loc}</span>
+          <span>• {asset.year}</span>
+        </div>
+        {/* Search Matches */}
+        <div className="flex flex-wrap gap-1">
+          {asset.blok && (
+            <Badge variant="outline" className={`text-[10px] h-4 px-1 ${asset.blok.toLowerCase().includes(query.toLowerCase()) ? 'bg-yellow-100 text-yellow-800' : ''}`}>
+              Blok {asset.blok}
+            </Badge>
+          )}
+          {asset.original_name && (
+            <Badge variant="outline" className={`text-[10px] h-4 px-1 ${asset.original_name.toLowerCase().includes(query.toLowerCase()) ? 'bg-orange-100 text-orange-800' : ''}`}>
+              Ex: {asset.original_name}
+            </Badge>
+          )}
+        </div>
+      </div>
+      <div className="text-right flex items-center gap-3 justify-end">
+        <span className="font-medium text-sm">Rp {asset.amount.toLocaleString('id-ID')}</span>
+        <Badge variant={asset.status === 'paid' ? 'default' : 'destructive'} className={`${asset.status === 'paid' ? 'bg-success hover:bg-success/90' : 'bg-destructive/90'} text-[10px] h-5`}>
+          {asset.status === 'paid' ? 'Lunas' : 'Belum'}
+        </Badge>
+      </div>
     </div>
   )
 }
