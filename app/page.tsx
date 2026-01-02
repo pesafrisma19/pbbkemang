@@ -447,7 +447,7 @@ export default function Home() {
                       {r.type === 'group' ? (
                         <div className="divide-y divide-border/50">
                           {r.members.map((m: any, idx: number) => (
-                            <div key={idx} className="p-3 pl-12 bg-card/50">
+                            <div key={idx} className="p-3 pl-4 sm:pl-8 bg-card/30">
                               <div className="flex items-center gap-2 mb-2">
                                 <span className="font-semibold text-sm">{m.name}</span>
                                 <span className="text-xs text-muted-foreground">({m.address})</span>
