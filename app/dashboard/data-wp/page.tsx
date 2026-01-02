@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 import { SimpleAccordion } from "@/components/ui/Accordion"
 import { Badge } from "@/components/ui/Badge"
-import { Search, Upload, Plus, Pencil, Trash, Loader2, Phone, MessageCircle, FileDown, AlertCircle, Users } from "lucide-react"
+import { Search, Upload, Plus, Pencil, Trash, Loader2, Phone, MessageCircle, FileDown, AlertCircle } from "lucide-react"
 import { Modal } from "@/components/ui/Modal"
 import * as XLSX from 'xlsx'
 
@@ -29,16 +29,9 @@ type WPData = {
     address: string;
     nik?: string;
     whatsapp?: string; // New: WhatsApp
-    group_id?: string; // New: Group ID
-    group_name?: string; // New: Group Name
     total_asset: number;
     total_tax: number;
     assets: Asset[];
-}
-
-type GroupOption = {
-    id: string;
-    name: string;
 }
 
 export default function DataWPPage() {
@@ -59,14 +52,8 @@ export default function DataWPPage() {
         name: "",
         address: "",
         nik: "",
-        whatsapp: "",
-        group_name: "" // For display/input
+        whatsapp: ""
     })
-
-    // Group State
-    const [groups, setGroups] = useState<GroupOption[]>([])
-    const [filteredGroups, setFilteredGroups] = useState<GroupOption[]>([])
-    const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false)
 
     const [formAssets, setFormAssets] = useState<Asset[]>([])
     const [newAsset, setNewAsset] = useState<Asset>({
@@ -109,8 +96,7 @@ export default function DataWPPage() {
     const [localData, setLocalData] = useState<WPData[]>([])
 
     const filteredData = localData.filter(wp =>
-        (wp.name && wp.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (wp.group_name && wp.group_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        wp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         wp.assets.some(a =>
             a.nop.includes(searchTerm) ||
             (a.original_name && a.original_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -361,12 +347,11 @@ export default function DataWPPage() {
             const { data, error } = await supabase
                 .from('citizens')
                 .select(`
+                    id, 
+                    name, 
+                    nik, 
+                    address,
                     whatsapp,
-                    group_id,
-                    citizen_groups (
-                        id,
-                        name
-                    ),
                     tax_objects (
                         nop,
                         location_name,
@@ -380,16 +365,6 @@ export default function DataWPPage() {
                 `)
                 .order('created_at', { ascending: false });
 
-            // Fetch Groups for Dropdown
-            const { data: groupData } = await supabase
-                .from('citizen_groups')
-                .select('id, name')
-                .order('name');
-
-            if (groupData) {
-                setGroups(groupData)
-            }
-
             if (error) throw error;
 
             if (data) {
@@ -398,9 +373,7 @@ export default function DataWPPage() {
                     name: item.name,
                     address: item.address,
                     nik: item.nik,
-                    whatsapp: item.whatsapp,
-                    group_id: item.group_id,
-                    group_name: item.citizen_groups?.name,
+                    whatsapp: item.whatsapp, // New
                     total_asset: item.tax_objects?.length || 0,
                     total_tax: item.tax_objects?.reduce((sum: number, obj: any) => sum + obj.amount_due, 0) || 0,
                     assets: item.tax_objects?.map((obj: any) => ({
@@ -445,19 +418,8 @@ export default function DataWPPage() {
 
     // --- Form Handlers ---
 
-    // Filter groups when typing
-    useEffect(() => {
-        if (!formData.group_name) {
-            setFilteredGroups(groups)
-        } else {
-            const lower = formData.group_name.toLowerCase()
-            const match = groups.filter(g => g.name && g.name.toLowerCase().includes(lower))
-            setFilteredGroups(match)
-        }
-    }, [formData.group_name, groups])
-
     const resetForm = () => {
-        setFormData({ name: "", address: "", nik: "", whatsapp: "", group_name: "" })
+        setFormData({ name: "", address: "", nik: "", whatsapp: "" })
         setFormAssets([])
         setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
         setShowAssetForm(false)
@@ -501,35 +463,12 @@ export default function DataWPPage() {
 
         try {
             let citizenId = editingId;
-            let finalGroupId = null;
-
-            // 1. Handle Group Logic (Find or Create)
-            const cleanGroupName = formData.group_name.trim();
-            if (cleanGroupName) {
-                // Check if exists in loaded groups (case insensitive)
-                const existingGroup = groups.find(g => g.name.toLowerCase() === cleanGroupName.toLowerCase());
-
-                if (existingGroup) {
-                    finalGroupId = existingGroup.id;
-                } else {
-                    // Create New Group
-                    const { data: newGroup, error: groupError } = await supabase
-                        .from('citizen_groups')
-                        .insert({ name: cleanGroupName })
-                        .select('id')
-                        .single();
-
-                    if (groupError) throw groupError;
-                    finalGroupId = newGroup.id;
-                }
-            }
 
             const payload = {
                 name: formData.name,
                 nik: formData.nik,
                 address: formData.address,
-                whatsapp: formData.whatsapp,
-                group_id: finalGroupId
+                whatsapp: formData.whatsapp // New
             }
 
             if (modalMode === 'add') {
@@ -651,8 +590,7 @@ export default function DataWPPage() {
             name: wp.name,
             address: wp.address,
             nik: wp.nik || "",
-            whatsapp: wp.whatsapp || "",
-            group_name: wp.group_name || ""
+            whatsapp: wp.whatsapp || "" // New
         })
         setFormAssets(wp.assets)
         setIsModalOpen(true)
@@ -676,12 +614,6 @@ export default function DataWPPage() {
                 <div className="text-left">
                     <div className="flex items-center gap-2">
                         <p className="font-semibold">{wp.name}</p>
-                        {wp.group_name && (
-                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5 gap-1">
-                                <Users size={10} />
-                                {wp.group_name}
-                            </Badge>
-                        )}
                     </div>
                     <p className="text-xs text-muted-foreground">{wp.address}</p>
 
@@ -960,44 +892,6 @@ export default function DataWPPage() {
                                 value={formData.address}
                                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                             />
-                        </div>
-
-                        {/* Group Input */}
-                        <div className="space-y-2 relative">
-                            <label htmlFor="groupName" className="text-sm font-medium">Kelompok / Group (Opsional)</label>
-                            <Input
-                                name="groupName"
-                                id="groupName"
-                                placeholder="Pilih atau Ketik Nama Baru..."
-                                value={formData.group_name}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, group_name: e.target.value })
-                                    setIsGroupDropdownOpen(true)
-                                }}
-                                onFocus={() => setIsGroupDropdownOpen(true)}
-                                onBlur={() => setTimeout(() => setIsGroupDropdownOpen(false), 200)}
-                                icon={Users}
-                            />
-                            {/* Dropdown Suggestions */}
-                            {isGroupDropdownOpen && filteredGroups.length > 0 && (
-                                <div className="absolute z-50 w-full bg-white dark:bg-slate-900 border border-border rounded-md shadow-lg mt-1 max-h-40 overflow-y-auto">
-                                    {filteredGroups.map(g => (
-                                        <div
-                                            key={g.id}
-                                            className="px-3 py-2 hover:bg-muted cursor-pointer text-sm"
-                                            onClick={() => {
-                                                setFormData({ ...formData, group_name: g.name })
-                                                setIsGroupDropdownOpen(false)
-                                            }}
-                                        >
-                                            {g.name}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <p className="text-[10px] text-muted-foreground">
-                                Pilih dari list atau ketik nama baru untuk membuat kelompok baru otomatis.
-                            </p>
                         </div>
                     </div>
 
