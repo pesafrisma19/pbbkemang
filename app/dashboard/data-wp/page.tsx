@@ -56,7 +56,9 @@ export default function DataWPPage() {
         address: "",
         nik: "",
         whatsapp: "",
-        group_id: "" // New
+        group_id: "",
+        rt: "", // New
+        rw: ""  // New
     })
 
     const [formAssets, setFormAssets] = useState<Asset[]>([])
