@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabaseClient"
-import { Card, CardContent } from "@/components/ui/Card"
 import { Input } from "@/components/ui/Input"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
@@ -42,8 +41,14 @@ export default function Home() {
 
   // Search State
   const [query, setQuery] = useState("")
+  // Results now grouped by Citizen
   const [results, setResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
+
+  const toggleCard = (id: string) => {
+    setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }))
+  }
 
   // Initialize Theme (Wait for mount to avoid hydration mismatch)
   useEffect(() => {
@@ -71,7 +76,6 @@ export default function Home() {
             unpaid += t.amount_due;
           }
         })
-        // Mock Target: 250jt
         const pct = Math.round((paid / (paid + unpaid || 1)) * 100);
         setStats({ paidAmount: paid, unpaidAmount: unpaid, paidCount: count, percentage: pct })
       }
@@ -88,6 +92,7 @@ export default function Home() {
       }
 
       setIsSearching(true);
+      setExpandedCards({}); // Reset expansion on new search
       try {
         // 1. Search by Citizen Name
         const { data: nameHits } = await supabase
@@ -115,13 +120,14 @@ export default function Home() {
           return
         }
 
-        // 4. Fetch Full Data for these IDs (QUERY BERSIH - TANPA KOMENTAR DI DALAM STRING)
+        // 4. Fetch Full Data for these IDs (Grouped by Citizen)
         const { data } = await supabase
           .from('citizens')
           .select(`
             id,
             name,
             address,
+            rt, rw, group_id,
             tax_objects (
               nop,
               location_name,
@@ -136,85 +142,64 @@ export default function Home() {
           .in('id', uniqueIds)
           .limit(20);
 
-        const flats: any[] = [];
-        data?.forEach((c: any) => {
-          if (c.tax_objects?.length > 0) {
-            c.tax_objects.forEach((t: any) => {
-              const matchesName = c.name.toLowerCase().includes(query.toLowerCase())
-              const searchClean = query.replace(/[.]/g, '');
-              const matchesAsset =
-                t.nop.includes(searchClean) ||
-                t.original_name?.toLowerCase().includes(query.toLowerCase()) ||
-                t.blok?.toLowerCase().includes(query.toLowerCase()) ||
-                t.persil?.toLowerCase().includes(query.toLowerCase());
+        // Process Data
+        const processed = data?.map((c: any) => {
+          const assets = c.tax_objects || []
+          const totalTax = assets.reduce((sum: number, a: any) => sum + a.amount_due, 0)
+          const unpaidCount = assets.filter((a: any) => a.status !== 'paid').length
 
-              if (matchesName || matchesAsset) {
-                flats.push({
-                  id: c.id,
-                  name: c.name,
-                  address: c.address,
-                  nop: t.nop.replace(/[.]/g, ''),
-                  raw_nop: t.nop, // Keep raw for querying
-                  loc: t.location_name,
-                  year: t.year || '-',
-                  amount: t.amount_due,
-                  status: t.status,
-                  original_name: t.original_name,
-                  blok: t.blok,
-                  persil: t.persil,
-                  other_owners: []
-                })
-              }
-            })
+          // Collect NOPs for shared check
+          const nops = assets.map((a: any) => a.nop)
+
+          return {
+            ...c,
+            totalTax,
+            unpaidCount,
+            assets, // Keep raw assets
+            nops
           }
-        });
+        }) || []
 
-        // 5. Fetch Shared NOP Info
-        const resultNops = flats.map(f => f.raw_nop);
-        if (resultNops.length > 0) {
-          const { data: sharedObjects } = await supabase
+        // 5. Check for Shared NOPs (Optimize: One Batch Query)
+        const allNops = processed.flatMap((p: any) => p.nops)
+        const nopOwnersMap: Record<string, string[]> = {}
+
+        if (allNops.length > 0) {
+          const { data: sharedData } = await supabase
             .from('tax_objects')
-            .select(`
-              nop,
-              amount_due,
-              citizens (
-                id,
-                name,
-                address
-              )
-            `)
-            .in('nop', resultNops);
+            .select('nop, citizens(name)')
+            .in('nop', allNops)
 
-          if (sharedObjects && sharedObjects.length > 0) {
-            const nopMap: Record<string, any[]> = {};
-
-            sharedObjects.forEach((obj: any) => {
-              if (obj.citizens) {
-                // Normalize key to dot-less to match flat.nop
-                const key = obj.nop.replace(/[.]/g, '');
-                if (!nopMap[key]) nopMap[key] = [];
-
-                nopMap[key].push({
-                  id: obj.citizens.id,
-                  name: obj.citizens.name,
-                  address: obj.citizens.address || '-',
-                  amount: obj.amount_due
-                });
-              }
-            });
-
-            flats.forEach(f => {
-              if (nopMap[f.nop]) {
-                const others = nopMap[f.nop].filter((o: any) => String(o.id) !== String(f.id));
-                if (others.length > 0) {
-                  f.other_owners = others;
-                }
-              }
-            });
-          }
+          // Map NOP -> [Owner Names]
+          sharedData?.forEach((item: any) => {
+            if (!nopOwnersMap[item.nop]) nopOwnersMap[item.nop] = []
+            if (item.citizens?.name && !nopOwnersMap[item.nop].includes(item.citizens.name)) {
+              nopOwnersMap[item.nop].push(item.citizens.name)
+            }
+          })
         }
 
-        setResults(flats);
+        // Attach Shared Info to Assets
+        const finalResults = processed.map((p: any) => {
+          const enrichedAssets = p.assets.map((a: any) => {
+            const owners = nopOwnersMap[a.nop] || []
+            const otherOwners = owners.filter(name => name !== p.name)
+            return {
+              ...a,
+              otherOwners
+            }
+          })
+          return { ...p, assets: enrichedAssets }
+        })
+
+        // Sort: Exact name match first, then by unpaid count desc
+        finalResults.sort((a: any, b: any) => {
+          if (a.name.toLowerCase() === query.toLowerCase()) return -1
+          if (b.name.toLowerCase() === query.toLowerCase()) return 1
+          return b.unpaidCount - a.unpaidCount
+        })
+
+        setResults(finalResults);
       } catch (err) {
         console.error(err)
       } finally {
@@ -327,7 +312,7 @@ export default function Home() {
         </div>
 
         {/* Search Widget */}
-        <div className="w-full max-w-xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-100">
+        <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-100">
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-primary to-cyan-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
             <div className="relative bg-card rounded-xl shadow-xl p-2 flex items-center gap-2 border border-border">
@@ -342,75 +327,108 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Live Search Results */}
+          {/* Grouped Search Results */}
           {query.length >= 3 && (
-            <div className="mt-4 space-y-3">
+            <div className="mt-6 space-y-4">
               {results.length > 0 ? (
-                results.map((r, i) => (
-                  <div key={i} className="bg-card p-4 rounded-xl border border-border shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group cursor-default">
-                    <div className="flex flex-col w-full">
-                      <div className="flex justify-between items-start w-full">
-                        <span className="font-bold text-foreground group-hover:text-primary transition-colors text-base">{r.name}</span>
-                        <div className={`sm:hidden text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-full ${r.status === 'paid' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
-                          {r.status === 'paid' ? 'LUNAS' : 'BELUM'}
+                results.map((citizen, i) => {
+                  const isExpanded = expandedCards[citizen.id] || false
+                  const hasShared = citizen.assets.some((a: any) => a.otherOwners && a.otherOwners.length > 0)
+                  const fullyPaid = citizen.unpaidCount === 0
+
+                  return (
+                    <div key={citizen.id} className="bg-card rounded-xl border border-border shadow-sm overflow-hidden transition-all hover:shadow-md">
+                      {/* Citizen Header */}
+                      <div
+                        className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => toggleCard(citizen.id)}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-lg text-foreground">{citizen.name}</h3>
+                            {/* Status Badge */}
+                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${fullyPaid ? 'bg-success/15 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                              {fullyPaid ? 'LUNAS' : `${citizen.unpaidCount} BELUM BAYAR`}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <MapPin size={12} />
+                              {citizen.address}
+                              {(citizen.rt || citizen.rw) && ` (RT ${citizen.rt || '-'} / RW ${citizen.rw || '-'})`}
+                            </span>
+                            {citizen.group_id && (
+                              <span className="flex items-center gap-1 text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded text-xs">
+                                <Building2 size={10} /> Group {citizen.group_id}
+                              </span>
+                            )}
+                            {hasShared && (
+                              <span className="flex items-center gap-1 text-warning bg-warning/10 px-1.5 py-0.5 rounded text-xs" title="Ada aset milik bersama">
+                                <CheckCircle size={10} /> Shared Aset
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="text-sm text-muted-foreground">Total Tagihan</div>
+                          <div className="font-extrabold text-lg">Rp {citizen.totalTax.toLocaleString('id-ID')}</div>
+                          <div className="text-xs text-primary mt-1 flex items-center justify-end gap-1">
+                            {isExpanded ? 'Sembunyikan' : 'Lihat Rincian'}
+                            {isExpanded ? <TrendingUp className="rotate-180" size={12} /> : <TrendingUp size={12} />}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <span className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">{r.nop}</span>
-                        <span className="flex items-center gap-1"><MapPin size={10} /> {r.loc} • {r.year}</span>
-                      </div>
-
-                      {/* Search Matches & Details */}
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {r.blok && (
-                          <Badge variant="outline" className={`text-[10px] h-5 px-1.5 ${r.blok.toLowerCase().includes(query.toLowerCase()) ? 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800' : 'bg-muted text-muted-foreground border-border'}`}>
-                            Blok {r.blok}
-                          </Badge>
-                        )}
-                        {r.persil && (
-                          <Badge variant="outline" className={`text-[10px] h-5 px-1.5 ${r.persil.toLowerCase().includes(query.toLowerCase()) ? 'bg-warning/10 text-warning border-warning/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                            Persil {r.persil}
-                          </Badge>
-                        )}
-                        {r.original_name && (
-                          <Badge variant="outline" className={`text-[10px] h-5 px-1.5 ${r.original_name.toLowerCase().includes(query.toLowerCase()) ? 'bg-warning/10 text-warning border-warning/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                            Ex: {r.original_name}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Expanded NOP Info */}
-                      {r.other_owners && r.other_owners.length > 0 && (
-                        <div className="mt-3 bg-muted/30 border border-muted rounded-lg overflow-hidden animate-in fade-in">
-                          <div className="px-3 py-1.5 bg-muted/50 border-b border-muted flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-warning"></div>
-                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Gabungan NOP:</span>
-                          </div>
-                          <div className="flex flex-col divide-y divide-border/50">
-                            {r.other_owners.map((owner: any, idx: number) => (
-                              <div key={idx} className="flex justify-between items-center px-3 py-2 hover:bg-muted/30">
-                                <div>
-                                  <div className="text-[11px] font-bold text-foreground">{owner.name}</div>
-                                  <div className="text-[10px] text-muted-foreground">{owner.address}</div>
+                      {/* Assets List (Collapsible) */}
+                      {isExpanded && (
+                        <div className="border-t border-border bg-muted/20 p-2 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-2">
+                          {citizen.assets.map((asset: any, idx: number) => (
+                            <div key={idx} className="bg-background rounded-lg border border-border/60 p-3 sm:flex justify-between items-center gap-4 group hover:border-primary/30 transition-colors">
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-foreground">{asset.nop}</span>
+                                  {asset.otherOwners?.length > 0 && (
+                                    <Badge variant="outline" className="text-[10px] h-5 px-1 bg-yellow-100 text-yellow-800 border-yellow-200" title={`Dimiliki juga oleh: ${asset.otherOwners.join(', ')}`}>
+                                      👥 BERSAMA
+                                    </Badge>
+                                  )}
                                 </div>
-                                <span className="text-[10px] font-mono text-muted-foreground">Rp {owner.amount.toLocaleString('id-ID')}</span>
+                                <div className="font-medium text-sm flex flex-wrap gap-2">
+                                  {asset.location_name}
+                                  <span className="text-muted-foreground font-normal">• {asset.year}</span>
+                                </div>
+
+                                {/* Meta Badges */}
+                                <div className="flex flex-wrap gap-1">
+                                  {asset.blok && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground">Blok {asset.blok}</span>}
+                                  {asset.persil && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground">Persil {asset.persil}</span>}
+                                  {asset.original_name && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground italic">Ex: {asset.original_name}</span>}
+                                </div>
+
+                                {/* Shared Warning */}
+                                {asset.otherOwners?.length > 0 && (
+                                  <div className="text-[10px] text-warning mt-1 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-warning rounded-full animate-pulse"></span>
+                                    Juga terdaftar a.n: {asset.otherOwners.join(', ')}
+                                  </div>
+                                )}
                               </div>
-                            ))}
-                          </div>
+
+                              <div className="mt-3 sm:mt-0 text-right min-w-[100px]">
+                                <div className="font-bold text-foreground text-base">Rp {asset.amount_due.toLocaleString('id-ID')}</div>
+                                <Badge variant={asset.status === 'paid' ? 'success' : 'destructive'} className="mt-1 text-[10px] h-5">
+                                  {asset.status === 'paid' ? 'LUNAS' : 'BELUM'}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
-
                     </div>
-
-                    <div className="hidden sm:block text-right min-w-max">
-                      <div className="font-bold text-foreground text-lg">Rp {r.amount.toLocaleString('id-ID')}</div>
-                      <div className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${r.status === 'paid' ? 'text-success' : 'text-destructive'}`}>
-                        {r.status === 'paid' ? 'LUNAS' : 'BELUM BAYAR'}
-                      </div>
-                    </div>
-                  </div>
-                ))
+                  )
+                })
               ) : (
                 !isSearching && (
                   <div className="text-center p-8 bg-card border border-dashed border-border rounded-xl text-muted-foreground">
@@ -427,14 +445,14 @@ export default function Home() {
         <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-200">
           <StatsCard
             title="Pajak Terkumpul"
-            value={`Rp ${(stats.paidAmount / 1000000).toFixed(1)} Jt`}
+            value={`Rp ${stats.paidAmount.toLocaleString('id-ID')}`}
             desc="Pendapatan Masuk"
             color="primary"
             icon={<CheckCircle className="text-primary w-5 h-5" />}
           />
           <StatsCard
             title="Potensi Pajak"
-            value={`Rp ${(stats.unpaidAmount / 1000000).toFixed(1)} Jt`}
+            value={`Rp ${stats.unpaidAmount.toLocaleString('id-ID')}`}
             desc="Belum Terbayar"
             color="warning"
             icon={<TrendingUp className="text-warning w-5 h-5" />}
@@ -472,14 +490,14 @@ export default function Home() {
                   <div className="w-2 h-2 rounded-full bg-success"></div>
                   <span className="text-foreground/70">Sudah Masuk</span>
                 </div>
-                <span className="font-bold text-foreground text-sm">Rp {(stats.paidAmount / 1000000).toFixed(1)} Jt</span>
+                <span className="font-bold text-foreground text-sm">Rp {stats.paidAmount.toLocaleString('id-ID')}</span>
               </div>
               <div className="text-center px-4 py-2 bg-muted/30 rounded-lg">
                 <div className="flex items-center gap-1.5 justify-center mb-1">
                   <div className="w-2 h-2 rounded-full bg-warning"></div>
                   <span className="text-foreground/70">Belum Bayar</span>
                 </div>
-                <span className="font-bold text-foreground text-sm">Rp {(stats.unpaidAmount / 1000000).toFixed(1)} Jt</span>
+                <span className="font-bold text-foreground text-sm">Rp {stats.unpaidAmount.toLocaleString('id-ID')}</span>
               </div>
             </div>
           </div>
