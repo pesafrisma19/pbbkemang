@@ -162,27 +162,25 @@ export default function Home() {
 
         // 5. Check for Shared NOPs (Optimize: One Batch Query)
         const allNops = processed.flatMap((p: any) => p.nops)
-        // Store distinct owner + amount. 
-        // Note: Different rows for same NOP might have different amounts? 
-        // Usually split, but here users import row by row.
-        const nopOwnersMap: Record<string, { name: string, amount: number }[]> = {}
+        // Store distinct owner + amount + status. 
+        const nopOwnersMap: Record<string, { name: string, amount: number, status: string }[]> = {}
 
         if (allNops.length > 0) {
           const { data: sharedData } = await supabase
             .from('tax_objects')
-            .select('nop, amount_due, citizens(name)')
+            .select('nop, amount_due, status, citizens(name)')
             .in('nop', allNops)
 
           // Map NOP -> [Owner Objects]
           sharedData?.forEach((item: any) => {
             if (!nopOwnersMap[item.nop]) nopOwnersMap[item.nop] = []
             if (item.citizens?.name) {
-              // Check if this specific name is already in list to avoid duplicates
               const exists = nopOwnersMap[item.nop].some(o => o.name === item.citizens.name)
               if (!exists) {
                 nopOwnersMap[item.nop].push({
                   name: item.citizens.name,
-                  amount: item.amount_due
+                  amount: item.amount_due,
+                  status: item.status
                 })
               }
             }
@@ -423,11 +421,14 @@ export default function Home() {
                                 {asset.otherOwners?.length > 0 && (
                                   <div className="mt-2 bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded px-2 py-1.5 inline-block">
                                     <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 block mb-0.5">PEMILIK LAIN:</span>
-                                    <div className="flex flex-col gap-0.5">
+                                    <div className="flex flex-col gap-1">
                                       {asset.otherOwners.map((o: any, ox: number) => (
                                         <div key={ox} className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                          <span>• {o.name}</span>
-                                          <span className="font-mono opacity-70">(Rp {o.amount.toLocaleString('id-ID')})</span>
+                                          <span className="font-medium">• {o.name}</span>
+                                          <span className="opacity-70 font-mono">(Rp {o.amount.toLocaleString('id-ID')})</span>
+                                          <span className={`px-1 rounded text-[9px] font-bold ${o.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                            {o.status === 'paid' ? 'LUNAS' : 'BELUM'}
+                                          </span>
                                         </div>
                                       ))}
                                     </div>
