@@ -193,7 +193,17 @@ export default function DataWPPage() {
                     // 1. Parse Fields
                     const nameRaw = row['NAMA_WP']
                     const addressRaw = row['ALAMAT']
-                    let nopRaw = row['NOP']
+                    let nopRaw = row['NOP'] ? String(row['NOP']).trim() : ""
+
+                    // Auto-generate NOP if empty
+                    if (!nopRaw) {
+                        const timestamp = Date.now();
+                        const random = Math.floor(Math.random() * 10000) + i; // Add index to avoid collision in same batch
+                        nopRaw = `TANPA-NOP-${timestamp}-${random}`;
+                    } else {
+                        // Basic formatting/validation if needed
+                    }
+
                     const taxRaw = row['NOMINAL_PAJAK']
                     const groupRaw = row['NO_GROUP'] ? String(row['NO_GROUP']).trim() : null // New: Group
 
@@ -442,17 +452,28 @@ export default function DataWPPage() {
     }
 
     const handleAddAsset = () => {
-        if (!newAsset.nop || !newAsset.tax) return;
+        // if (!newAsset.nop || !newAsset.tax) return; // Allow empty NOP now
+        if (!newAsset.tax) return;
+
+        // Auto-generate NOP if empty
+        let finalNop = newAsset.nop.trim();
+        if (!finalNop) {
+            const timestamp = Date.now();
+            const random = Math.floor(Math.random() * 1000);
+            finalNop = `TANPA-NOP-${timestamp}-${random}`;
+        }
+
+        const assetToAdd = { ...newAsset, nop: finalNop }
 
         if (editingAssetIndex !== null) {
             // Update Existing
             const updated = [...formAssets]
-            updated[editingAssetIndex] = newAsset
+            updated[editingAssetIndex] = assetToAdd
             setFormAssets(updated)
             setEditingAssetIndex(null)
         } else {
             // Add New
-            setFormAssets([...formAssets, newAsset])
+            setFormAssets([...formAssets, assetToAdd])
         }
 
         setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
