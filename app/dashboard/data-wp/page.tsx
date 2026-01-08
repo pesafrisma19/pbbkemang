@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 import { SimpleAccordion } from "@/components/ui/Accordion"
 import { Badge } from "@/components/ui/Badge"
-import { Search, Upload, Plus, Pencil, Trash, Loader2, Phone, MessageCircle, FileDown, AlertCircle } from "lucide-react"
+import { Search, Upload, Plus, Pencil, Trash, Loader2, Phone, MessageCircle, FileDown, AlertCircle, Users } from "lucide-react"
 import { Modal } from "@/components/ui/Modal"
 import * as XLSX from 'xlsx'
 
@@ -29,6 +29,7 @@ type WPData = {
     address: string;
     nik?: string;
     whatsapp?: string; // New: WhatsApp
+    group_id?: string; // New: No Group / Family ID
     total_asset: number;
     total_tax: number;
     assets: Asset[];
@@ -52,7 +53,8 @@ export default function DataWPPage() {
         name: "",
         address: "",
         nik: "",
-        whatsapp: ""
+        whatsapp: "",
+        group_id: "" // New
     })
 
     const [formAssets, setFormAssets] = useState<Asset[]>([])
@@ -97,6 +99,7 @@ export default function DataWPPage() {
 
     const filteredData = localData.filter(wp =>
         wp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (wp.group_id && wp.group_id.toLowerCase().includes(searchTerm.toLowerCase())) || // Search Group
         wp.assets.some(a =>
             a.nop.includes(searchTerm) ||
             (a.original_name && a.original_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -120,7 +123,7 @@ export default function DataWPPage() {
 
     const handleDownloadTemplate = () => {
         const headers = [
-            "NAMA_WP", "ALAMAT", "NIK", "WHATSAPP", "NOP", "LOKASI_OBJEK", "NOMINAL_PAJAK", "TAHUN_PAJAK", "STATUS_BAYAR",
+            "NO_GROUP", "NAMA_WP", "ALAMAT", "NIK", "WHATSAPP", "NOP", "LOKASI_OBJEK", "NOMINAL_PAJAK", "TAHUN_PAJAK", "STATUS_BAYAR",
             "NAMA_ASAL", "PERSIL", "BLOK"
         ]
 
@@ -129,13 +132,13 @@ export default function DataWPPage() {
         // 2. Budi - Short NOP (4 digit shorthand) -> automatically expands to 3205130005000xxxx7
         const sample = [
             // WP 1: Asep - 1 Kikitir (Full NOP 18 digit)
-            ["Asep Saepudin", "Dusun Manis RT 01", "3204123456780001", "081234567890", "320513000500010007", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
+            ["1", "Asep Saepudin", "Dusun Manis RT 01", "3204123456780001", "081234567890", "320513000500010007", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
 
             // WP 2: Budi - Kikitir 1 (Short NOP 4 digit: 2001 -> 320513000500020017)
-            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "2001", "Rumah Tinggal", 125000, 2024, "LUNAS", "-", "12b", "005"],
+            ["2", "Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "2001", "Rumah Tinggal", 125000, 2024, "LUNAS", "-", "12b", "005"],
 
             // WP 2: Budi - Kikitir 2 (Short NOP 4 digit: 2002)
-            ["Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "2002", "Kebun Jati", 75000, 2024, "BELUM", "-", "12c", "005"]
+            ["2", "Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "2002", "Kebun Jati", 75000, 2024, "BELUM", "-", "12c", "005"]
         ]
 
         const wb = XLSX.utils.book_new()
@@ -143,6 +146,7 @@ export default function DataWPPage() {
 
         // Auto-width for better visibility
         const wscols = headers.map(() => ({ wch: 20 }))
+        wscols[0] = { wch: 10 } // NO_GROUP smaller
         ws['!cols'] = wscols
 
         XLSX.utils.book_append_sheet(wb, ws, "Template_PBB")
@@ -191,6 +195,7 @@ export default function DataWPPage() {
                     const addressRaw = row['ALAMAT']
                     let nopRaw = row['NOP']
                     const taxRaw = row['NOMINAL_PAJAK']
+                    const groupRaw = row['NO_GROUP'] ? String(row['NO_GROUP']).trim() : null // New: Group
 
                     // Validation Message Helpers
                     const missingFields = []
@@ -249,6 +254,11 @@ export default function DataWPPage() {
                         if (existing) {
                             citizenId = existing.id
                             matchedCitizenCount++
+                            // Update group_id if provided and not present? 
+                            // For simplicity, we just update it if provided in CSV
+                            if (groupRaw) {
+                                await supabase.from('citizens').update({ group_id: groupRaw }).eq('id', citizenId)
+                            }
                         } else {
                             // Create New
                             const { data: newCitizen, error: createError } = await supabase
@@ -257,7 +267,8 @@ export default function DataWPPage() {
                                     name: name,
                                     address: address,
                                     nik: row['NIK'] ? String(row['NIK']).trim() : null,
-                                    whatsapp: phone
+                                    whatsapp: phone,
+                                    group_id: groupRaw // New
                                 })
                                 .select('id')
                                 .single()
@@ -352,6 +363,7 @@ export default function DataWPPage() {
                     nik, 
                     address,
                     whatsapp,
+                    group_id,
                     tax_objects (
                         nop,
                         location_name,
@@ -363,7 +375,8 @@ export default function DataWPPage() {
                         blok
                     )
                 `)
-                .order('created_at', { ascending: false });
+                .order('group_id', { ascending: true, nullsFirst: false }) // Sort by Group ID first
+                .order('name', { ascending: true }); // Then by Name
 
             if (error) throw error;
 
@@ -373,7 +386,8 @@ export default function DataWPPage() {
                     name: item.name,
                     address: item.address,
                     nik: item.nik,
-                    whatsapp: item.whatsapp, // New
+                    whatsapp: item.whatsapp,
+                    group_id: item.group_id, // Map group_id
                     total_asset: item.tax_objects?.length || 0,
                     total_tax: item.tax_objects?.reduce((sum: number, obj: any) => sum + obj.amount_due, 0) || 0,
                     assets: item.tax_objects?.map((obj: any) => ({
@@ -419,7 +433,7 @@ export default function DataWPPage() {
     // --- Form Handlers ---
 
     const resetForm = () => {
-        setFormData({ name: "", address: "", nik: "", whatsapp: "" })
+        setFormData({ name: "", address: "", nik: "", whatsapp: "", group_id: "" })
         setFormAssets([])
         setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
         setShowAssetForm(false)
@@ -468,7 +482,8 @@ export default function DataWPPage() {
                 name: formData.name,
                 nik: formData.nik,
                 address: formData.address,
-                whatsapp: formData.whatsapp // New
+                whatsapp: formData.whatsapp,
+                group_id: formData.group_id // New
             }
 
             if (modalMode === 'add') {
@@ -590,7 +605,8 @@ export default function DataWPPage() {
             name: wp.name,
             address: wp.address,
             nik: wp.nik || "",
-            whatsapp: wp.whatsapp || "" // New
+            whatsapp: wp.whatsapp || "",
+            group_id: wp.group_id || ""
         })
         setFormAssets(wp.assets)
         setIsModalOpen(true)
@@ -614,6 +630,11 @@ export default function DataWPPage() {
                 <div className="text-left">
                     <div className="flex items-center gap-2">
                         <p className="font-semibold">{wp.name}</p>
+                        {wp.group_id && (
+                            <Badge variant="outline" className="text-[10px] h-5 px-1 bg-blue-50 text-blue-700 border-blue-200" title={`No. Group / Keluarga: ${wp.group_id}`}>
+                                <Users size={10} className="mr-1" /> Grp {wp.group_id}
+                            </Badge>
+                        )}
                     </div>
                     <p className="text-xs text-muted-foreground">{wp.address}</p>
 
@@ -850,15 +871,29 @@ export default function DataWPPage() {
                 <div className="space-y-4">
                     <div className="space-y-4 border-b pb-4">
                         <h3 className="font-semibold text-sm text-accent-blue">I. Data Diri Warga</h3>
-                        <div className="space-y-2">
-                            <label htmlFor="fullName" className="text-sm font-medium">Nama Lengkap</label>
-                            <Input
-                                name="fullName"
-                                id="fullName"
-                                placeholder="Contoh: Asep Saepudin"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            />
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2 col-span-2">
+                                <label htmlFor="fullName" className="text-sm font-medium">Nama Lengkap</label>
+                                <Input
+                                    name="fullName"
+                                    id="fullName"
+                                    placeholder="Contoh: Asep Saepudin"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2 col-span-1">
+                                <label htmlFor="groupId" className="text-sm font-medium">No. Group (Kel)</label>
+                                <Input
+                                    name="groupId"
+                                    id="groupId"
+                                    placeholder="Contoh: 1"
+                                    value={formData.group_id}
+                                    onChange={(e) => setFormData({ ...formData, group_id: e.target.value })}
+                                    className="text-center"
+                                />
+                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -1106,13 +1141,14 @@ export default function DataWPPage() {
                             </div>
                         )}
                     </div>
-                </div>
-            </Modal>
+                </div >
+            </Modal >
 
             {/* Delete Confirmation Modal */}
-            <Modal
+            < Modal
                 isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
+                onClose={() => setIsDeleteModalOpen(false)
+                }
                 title="Konfirmasi Hapus"
                 footer={
                     <>
@@ -1136,15 +1172,15 @@ export default function DataWPPage() {
                         PERINGATAN: Tindakan ini tidak bisa dibatalkan dan semua kikitir milik warga ini akan ikut terhapus.
                     </p>
                 </div>
-            </Modal>
+            </Modal >
 
             {/* Shared NOP Details Modal */}
-            <Modal
+            < Modal
                 isOpen={!!detailNop}
                 onClose={() => setDetailNop(null)}
                 title="Detail Pemilik Bersama (Shared NOP)"
                 footer={
-                    <Button onClick={() => setDetailNop(null)}>Tutup</Button>
+                    < Button onClick={() => setDetailNop(null)}> Tutup</Button >
                 }
             >
                 {detailNop && nopOwnersMap[detailNop] ? (
@@ -1180,17 +1216,17 @@ export default function DataWPPage() {
                 ) : (
                     <p className="text-center text-muted-foreground">Data tidak ditemukan.</p>
                 )}
-            </Modal>
+            </Modal >
 
             {/* Modal: Result Import */}
-            <Modal
+            < Modal
                 isOpen={isResultModalOpen}
                 onClose={() => setIsResultModalOpen(false)}
                 title="Hasil Import Data"
                 footer={
-                    <Button onClick={() => setIsResultModalOpen(false)} className="w-full sm:w-auto">
+                    < Button onClick={() => setIsResultModalOpen(false)} className="w-full sm:w-auto" >
                         Tutup
-                    </Button>
+                    </Button >
                 }
             >
                 {importResult && (
@@ -1247,21 +1283,21 @@ export default function DataWPPage() {
                         )}
                     </div>
                 )}
-            </Modal>
+            </Modal >
 
 
             {/* Modal: General Alert */}
-            <Modal
+            < Modal
                 isOpen={alertState.isOpen}
                 onClose={() => setAlertState({ ...alertState, isOpen: false })}
                 title={alertState.title}
                 footer={
-                    <Button
+                    < Button
                         onClick={() => setAlertState({ ...alertState, isOpen: false })}
                         className={`w-full sm:w-auto ${alertState.type === 'error' ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : ""}`}
                     >
                         Mengerti
-                    </Button>
+                    </Button >
                 }
             >
                 <div className="flex flex-col items-center justify-center space-y-4 py-4 text-center">
@@ -1277,7 +1313,7 @@ export default function DataWPPage() {
                         </p>
                     </div>
                 </div>
-            </Modal>
+            </Modal >
         </div >
     )
 }
