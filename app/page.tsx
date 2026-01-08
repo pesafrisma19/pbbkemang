@@ -162,19 +162,29 @@ export default function Home() {
 
         // 5. Check for Shared NOPs (Optimize: One Batch Query)
         const allNops = processed.flatMap((p: any) => p.nops)
-        const nopOwnersMap: Record<string, string[]> = {}
+        // Store distinct owner + amount. 
+        // Note: Different rows for same NOP might have different amounts? 
+        // Usually split, but here users import row by row.
+        const nopOwnersMap: Record<string, { name: string, amount: number }[]> = {}
 
         if (allNops.length > 0) {
           const { data: sharedData } = await supabase
             .from('tax_objects')
-            .select('nop, citizens(name)')
+            .select('nop, amount_due, citizens(name)')
             .in('nop', allNops)
 
-          // Map NOP -> [Owner Names]
+          // Map NOP -> [Owner Objects]
           sharedData?.forEach((item: any) => {
             if (!nopOwnersMap[item.nop]) nopOwnersMap[item.nop] = []
-            if (item.citizens?.name && !nopOwnersMap[item.nop].includes(item.citizens.name)) {
-              nopOwnersMap[item.nop].push(item.citizens.name)
+            if (item.citizens?.name) {
+              // Check if this specific name is already in list to avoid duplicates
+              const exists = nopOwnersMap[item.nop].some(o => o.name === item.citizens.name)
+              if (!exists) {
+                nopOwnersMap[item.nop].push({
+                  name: item.citizens.name,
+                  amount: item.amount_due
+                })
+              }
             }
           })
         }
@@ -183,7 +193,8 @@ export default function Home() {
         const finalResults = processed.map((p: any) => {
           const enrichedAssets = p.assets.map((a: any) => {
             const owners = nopOwnersMap[a.nop] || []
-            const otherOwners = owners.filter(name => name !== p.name)
+            // Filter out self from "otherOwners" list
+            const otherOwners = owners.filter(o => o.name !== p.name)
             return {
               ...a,
               otherOwners
@@ -333,6 +344,7 @@ export default function Home() {
               {results.length > 0 ? (
                 results.map((citizen, i) => {
                   const isExpanded = expandedCards[citizen.id] || false
+                  // Check if any asset allows expansion details (shared)
                   const hasShared = citizen.assets.some((a: any) => a.otherOwners && a.otherOwners.length > 0)
                   const fullyPaid = citizen.unpaidCount === 0
 
@@ -390,8 +402,8 @@ export default function Home() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-foreground">{asset.nop}</span>
                                   {asset.otherOwners?.length > 0 && (
-                                    <Badge variant="outline" className="text-[10px] h-5 px-1 bg-yellow-100 text-yellow-800 border-yellow-200" title={`Dimiliki juga oleh: ${asset.otherOwners.join(', ')}`}>
-                                      👥 BERSAMA
+                                    <Badge variant="outline" className="text-[10px] h-5 px-1 bg-yellow-100 text-yellow-800 border-yellow-200" title={`Dimiliki juga oleh: ${asset.otherOwners.map((o: any) => o.name).join(', ')}`}>
+                                      👥 BERSAMA ({asset.otherOwners.length + 1})
                                     </Badge>
                                   )}
                                 </div>
@@ -409,9 +421,16 @@ export default function Home() {
 
                                 {/* Shared Warning */}
                                 {asset.otherOwners?.length > 0 && (
-                                  <div className="text-[10px] text-warning mt-1 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 bg-warning rounded-full animate-pulse"></span>
-                                    Juga terdaftar a.n: {asset.otherOwners.join(', ')}
+                                  <div className="mt-2 bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded px-2 py-1.5 inline-block">
+                                    <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 block mb-0.5">PEMILIK LAIN:</span>
+                                    <div className="flex flex-col gap-0.5">
+                                      {asset.otherOwners.map((o: any, ox: number) => (
+                                        <div key={ox} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                          <span>• {o.name}</span>
+                                          <span className="font-mono opacity-70">(Rp {o.amount.toLocaleString('id-ID')})</span>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
                               </div>
