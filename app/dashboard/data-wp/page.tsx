@@ -30,6 +30,8 @@ type WPData = {
     nik?: string;
     whatsapp?: string; // New: WhatsApp
     group_id?: string; // New: No Group / Family ID
+    rt?: string; // New: RT
+    rw?: string; // New: RW
     total_asset: number;
     total_tax: number;
     assets: Asset[];
@@ -123,7 +125,7 @@ export default function DataWPPage() {
 
     const handleDownloadTemplate = () => {
         const headers = [
-            "NO_GROUP", "NAMA_WP", "ALAMAT", "NIK", "WHATSAPP", "NOP", "LOKASI_OBJEK", "NOMINAL_PAJAK", "TAHUN_PAJAK", "STATUS_BAYAR",
+            "NO_GROUP", "NAMA_WP", "ALAMAT", "RT", "RW", "NIK", "WHATSAPP", "NOP", "LOKASI_OBJEK", "NOMINAL_PAJAK", "TAHUN_PAJAK", "STATUS_BAYAR",
             "NAMA_ASAL", "PERSIL", "BLOK"
         ]
 
@@ -131,14 +133,11 @@ export default function DataWPPage() {
         // 1. Asep - Full NOP (18 digit numbers only)
         // 2. Budi - Short NOP (4 digit shorthand) -> automatically expands to 3205130005000xxxx7
         const sample = [
-            // WP 1: Asep - 1 Kikitir (Full NOP 18 digit)
-            ["1", "Asep Saepudin", "Dusun Manis RT 01", "3204123456780001", "081234567890", "320513000500010007", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
+            // WP 1: Asep
+            ["1", "Asep Saepudin", "Dusun Manis", "001", "002", "3204123456780001", "081234567890", "320513000500010007", "Sawah Lega", 50000, 2024, "BELUM", "H. Dadang", "10a", "001"],
 
-            // WP 2: Budi - Kikitir 1 (Short NOP 4 digit: 2001 -> 320513000500020017)
-            ["2", "Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "2001", "Rumah Tinggal", 125000, 2024, "LUNAS", "-", "12b", "005"],
-
-            // WP 2: Budi - Kikitir 2 (Short NOP 4 digit: 2002)
-            ["2", "Budi Santoso", "Dusun Pahing RT 02", "3204876543210002", "085798765432", "2002", "Kebun Jati", 75000, 2024, "BELUM", "-", "12c", "005"]
+            // WP 2: Budi
+            ["2", "Budi Santoso", "Dusun Pahing", "005", "003", "3204876543210002", "085798765432", "2001", "Rumah Tinggal", 125000, 2024, "LUNAS", "-", "12b", "005"],
         ]
 
         const wb = XLSX.utils.book_new()
@@ -147,6 +146,8 @@ export default function DataWPPage() {
         // Auto-width for better visibility
         const wscols = headers.map(() => ({ wch: 20 }))
         wscols[0] = { wch: 10 } // NO_GROUP smaller
+        wscols[3] = { wch: 8 }  // RT
+        wscols[4] = { wch: 8 }  // RW
         ws['!cols'] = wscols
 
         XLSX.utils.book_append_sheet(wb, ws, "Template_PBB")
@@ -206,6 +207,8 @@ export default function DataWPPage() {
 
                     const taxRaw = row['NOMINAL_PAJAK']
                     const groupRaw = row['NO_GROUP'] ? String(row['NO_GROUP']).trim() : null // New: Group
+                    const rtRaw = row['RT'] ? String(row['RT']).trim() : null
+                    const rwRaw = row['RW'] ? String(row['RW']).trim() : null
 
                     // Validation Message Helpers
                     const missingFields = []
@@ -267,7 +270,11 @@ export default function DataWPPage() {
                             // Update group_id if provided and not present? 
                             // For simplicity, we just update it if provided in CSV
                             if (groupRaw) {
-                                await supabase.from('citizens').update({ group_id: groupRaw }).eq('id', citizenId)
+                                await supabase.from('citizens').update({
+                                    group_id: groupRaw,
+                                    rt: rtRaw, // Update RT if available?
+                                    rw: rwRaw  // Update RW if available?
+                                }).eq('id', citizenId)
                             }
                         } else {
                             // Create New
@@ -278,7 +285,9 @@ export default function DataWPPage() {
                                     address: address,
                                     nik: row['NIK'] ? String(row['NIK']).trim() : null,
                                     whatsapp: phone,
-                                    group_id: groupRaw // New
+                                    group_id: groupRaw, // New
+                                    rt: rtRaw,
+                                    rw: rwRaw
                                 })
                                 .select('id')
                                 .single()
@@ -374,6 +383,8 @@ export default function DataWPPage() {
                     address,
                     whatsapp,
                     group_id,
+                    rt,
+                    rw,
                     tax_objects (
                         nop,
                         location_name,
@@ -398,6 +409,8 @@ export default function DataWPPage() {
                     nik: item.nik,
                     whatsapp: item.whatsapp,
                     group_id: item.group_id, // Map group_id
+                    rt: item.rt, // Map RT
+                    rw: item.rw, // Map RW
                     total_asset: item.tax_objects?.length || 0,
                     total_tax: item.tax_objects?.reduce((sum: number, obj: any) => sum + obj.amount_due, 0) || 0,
                     assets: item.tax_objects?.map((obj: any) => ({
@@ -443,7 +456,7 @@ export default function DataWPPage() {
     // --- Form Handlers ---
 
     const resetForm = () => {
-        setFormData({ name: "", address: "", nik: "", whatsapp: "", group_id: "" })
+        setFormData({ name: "", address: "", nik: "", whatsapp: "", group_id: "", rt: "", rw: "" })
         setFormAssets([])
         setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
         setShowAssetForm(false)
@@ -504,7 +517,9 @@ export default function DataWPPage() {
                 nik: formData.nik,
                 address: formData.address,
                 whatsapp: formData.whatsapp,
-                group_id: formData.group_id // New
+                group_id: formData.group_id,
+                rt: formData.rt, // New
+                rw: formData.rw  // New
             }
 
             if (modalMode === 'add') {
@@ -627,7 +642,9 @@ export default function DataWPPage() {
             address: wp.address,
             nik: wp.nik || "",
             whatsapp: wp.whatsapp || "",
-            group_id: wp.group_id || ""
+            group_id: wp.group_id || "",
+            rt: wp.rt || "", // New
+            rw: wp.rw || ""  // New
         })
         setFormAssets(wp.assets)
         setIsModalOpen(true)
@@ -657,7 +674,14 @@ export default function DataWPPage() {
                             </Badge>
                         )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{wp.address}</p>
+                    <p className="text-xs text-muted-foreground">
+                        {wp.address}
+                        {(wp.rt || wp.rw) && (
+                            <span className="ml-1 inline-flex items-center text-[10px] bg-muted px-1 rounded">
+                                {wp.rt ? `RT ${wp.rt}` : ''} {wp.rw ? `/ RW ${wp.rw}` : ''}
+                            </span>
+                        )}
+                    </p>
 
                     {/* Search Match Highlight */}
                     {searchTerm && (
@@ -940,14 +964,36 @@ export default function DataWPPage() {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label htmlFor="address" className="text-sm font-medium">Alamat</label>
-                            <Input
-                                name="address"
-                                id="address"
-                                placeholder="Dusun / Blok"
-                                value={formData.address}
-                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                            />
+                            <label className="text-sm font-medium">Alamat Lengkap</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                <div className="col-span-2">
+                                    <Input
+                                        name="address"
+                                        id="address"
+                                        placeholder="Dusun / Blok"
+                                        value={formData.address}
+                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <Input
+                                        name="rt"
+                                        placeholder="RT"
+                                        value={formData.rt}
+                                        onChange={(e) => setFormData({ ...formData, rt: e.target.value })}
+                                        className="text-center"
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <Input
+                                        name="rw"
+                                        placeholder="RW"
+                                        value={formData.rw}
+                                        onChange={(e) => setFormData({ ...formData, rw: e.target.value })}
+                                        className="text-center"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
