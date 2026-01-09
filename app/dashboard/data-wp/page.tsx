@@ -156,7 +156,82 @@ export default function DataWPPage() {
         XLSX.writeFile(wb, "Template_Import_PBB.xlsx")
     }
 
+    // NEW: Download All Existing Data as Excel
+    const handleDownloadData = () => {
+        if (localData.length === 0) {
+            alert("Tidak ada data untuk diunduh.")
+            return
+        }
+
+        const headers = [
+            "NO_GROUP", "NAMA_WP", "ALAMAT", "RT", "RW", "NIK", "WHATSAPP", "NOP", "LOKASI_OBJEK", "NOMINAL_PAJAK", "TAHUN_PAJAK", "STATUS_BAYAR",
+            "NAMA_ASAL", "PERSIL", "BLOK"
+        ]
+
+        // Flatten data: Each asset becomes a row
+        const rows: any[][] = []
+        localData.forEach(wp => {
+            if (wp.assets.length === 0) {
+                // WP without assets - still include for completeness
+                rows.push([
+                    wp.group_id || "",
+                    wp.name,
+                    wp.address,
+                    wp.rt || "",
+                    wp.rw || "",
+                    wp.nik || "",
+                    wp.whatsapp || "",
+                    "", // NOP
+                    "", // LOKASI
+                    0,  // NOMINAL
+                    new Date().getFullYear(), // TAHUN
+                    "", // STATUS
+                    "", // NAMA_ASAL
+                    "", // PERSIL
+                    ""  // BLOK
+                ])
+            } else {
+                wp.assets.forEach(asset => {
+                    rows.push([
+                        wp.group_id || "",
+                        wp.name,
+                        wp.address,
+                        wp.rt || "",
+                        wp.rw || "",
+                        wp.nik || "",
+                        wp.whatsapp || "",
+                        asset.nop,
+                        asset.loc,
+                        asset.tax,
+                        asset.year,
+                        asset.status === 'paid' ? 'LUNAS' : 'BELUM',
+                        asset.original_name || "",
+                        asset.persil || "",
+                        asset.blok || ""
+                    ])
+                })
+            }
+        })
+
+        const wb = XLSX.utils.book_new()
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+
+        // Auto-width
+        const wscols = headers.map(() => ({ wch: 20 }))
+        wscols[0] = { wch: 10 } // NO_GROUP
+        wscols[3] = { wch: 8 }  // RT
+        wscols[4] = { wch: 8 }  // RW
+        ws['!cols'] = wscols
+
+        XLSX.utils.book_append_sheet(wb, ws, "Data_PBB")
+
+        // Filename with date
+        const today = new Date().toISOString().split('T')[0]
+        XLSX.writeFile(wb, `Data_PBB_${today}.xlsx`)
+    }
+
     const processImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+
         const file = e.target.files?.[0]
         if (!file) return;
 
@@ -830,6 +905,15 @@ export default function DataWPPage() {
                         title="Download Format Excel"
                     >
                         <FileDown size={16} /> <span className="hidden sm:inline">Format</span>
+                    </Button>
+
+                    <Button
+                        variant="secondary"
+                        className="gap-2 flex-1 sm:flex-none"
+                        onClick={handleDownloadData}
+                        title="Download Semua Data"
+                    >
+                        <FileDown size={16} /> <span className="hidden sm:inline">Data</span>
                     </Button>
 
                     <Button
