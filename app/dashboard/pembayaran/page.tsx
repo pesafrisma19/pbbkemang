@@ -334,9 +334,7 @@ export default function PembayaranPage() {
                                     Group {group.group_id}
                                 </span>
                                 {groupStats[group.group_id] > 0 && (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-bold whitespace-nowrap" title="Total tunggakan seluruh anggota Group ini">
-                                        Total Group: Rp {groupStats[group.group_id].toLocaleString('id-ID')}
-                                    </span>
+                                    <span className="hidden"></span>
                                 )}
                             </div>
                         )}
@@ -365,7 +363,7 @@ export default function PembayaranPage() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             {/* Item Details */}
                             <div className="flex-1 space-y-1">
-                                <div className="flex items-center gap-2 text-sm font-medium">
+                                <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
                                     {item.nop.startsWith('TANPA-NOP') ? (
                                         <span className="bg-orange-50 text-orange-600 border-orange-200 border px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">
                                             NOP BELUM ADA

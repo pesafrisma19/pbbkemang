@@ -592,7 +592,7 @@ function CitizenCard({ citizen, isExpanded, onToggle, highlight }: any) {
 
       {/* Assets List (Collapsible) */}
       {isExpanded && citizen.assets && (
-        <div className="border-t border-border bg-muted/20 p-2 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-2">
+        <div className="border-t border-border bg-muted/20 p-2 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-2 max-h-[60vh] overflow-y-auto">
           {citizen.assets.map((asset: any, idx: number) => (
             <div key={idx} className="bg-background rounded-lg border border-border/60 p-3 sm:flex justify-between items-center gap-4 group hover:border-primary/30 transition-colors">
               <div className="flex-1 space-y-1">
