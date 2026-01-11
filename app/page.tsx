@@ -184,7 +184,7 @@ export default function Home() {
             (a.blok && a.blok.toLowerCase().includes(query.toLowerCase())) ||
             (a.persil && a.persil.toLowerCase().includes(query.toLowerCase()))
           )
-          return { ...c, totalTax, unpaidCount, isMatch: nameMatch || assetMatch }
+          return { ...c, totalTax, unpaidCount, assets, isMatch: nameMatch || assetMatch }
         }
 
         const processedAll = allRaw.map(processCitizen)
