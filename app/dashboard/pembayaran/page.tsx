@@ -264,7 +264,7 @@ export default function PembayaranPage() {
 
     // Render WP Card
     const renderWPCard = (group: WPGroup) => (
-        <div key={group.citizen_id} className={`border rounded-xl overflow-hidden bg-card text-card-foreground shadow-sm ${group.isGroupMember ? 'border-blue-200 dark:border-blue-800' : ''}`}>
+        <div key={group.citizen_id} className={`border rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-md ${group.isGroupMember ? 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10' : 'bg-card text-card-foreground'}`}>
             {/* WP Header */}
             <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${group.isGroupMember ? 'bg-blue-50/50 dark:bg-blue-900/20' : 'bg-muted/30'}`}>
                 <div>
