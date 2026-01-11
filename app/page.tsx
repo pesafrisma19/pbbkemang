@@ -41,9 +41,9 @@ export default function Home() {
 
   // Search State
   const [query, setQuery] = useState("")
-  // Results: { directMatches: [], groupMembers: [] }
-  const [results, setResults] = useState<any[]>([])
-  const [groupMembers, setGroupMembers] = useState<any[]>([]) // Related group members
+  // Results State
+  // Structure: { type: 'group' | 'single', data: any, id: string | number }
+  const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
 
@@ -88,177 +88,149 @@ export default function Home() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (query.length < 3) {
-        setResults([]);
-        setGroupMembers([]);
+        setSearchResults([]);
         return;
       }
 
       setIsSearching(true);
       setExpandedCards({}); // Reset expansion on new search
       try {
-        // 1. Search by Citizen Name
+        // 1. Search Logic: Find citizen IDs that match name or assets
         const { data: nameHits } = await supabase
           .from('citizens')
-          .select('id')
+          .select('id, group_id')
           .ilike('name', `%${query}%`)
           .limit(20)
 
-        // 2. Search by Asset Fields (NOP, Original Name, Blok, Persil)
         const { data: assetHits } = await supabase
           .from('tax_objects')
           .select('citizen_id')
           .or(`nop.ilike.%${query}%,original_name.ilike.%${query}%,blok.ilike.%${query}%,persil.ilike.%${query}%`)
           .limit(20)
 
-        // 3. Combine IDs
-        const ids = new Set<string>()
-        nameHits?.forEach(x => ids.add(x.id))
-        assetHits?.forEach(x => ids.add(x.citizen_id))
-        const uniqueIds = Array.from(ids)
+        // Collect all directly matched Citizen IDs and Group IDs
+        const matchedCitizenIds = new Set<string>()
+        const matchedGroupIds = new Set<string>()
 
-        if (uniqueIds.length === 0) {
-          setResults([])
-          setGroupMembers([])
+        nameHits?.forEach(x => {
+          matchedCitizenIds.add(x.id)
+          if (x.group_id) matchedGroupIds.add(x.group_id)
+        })
+
+        // For asset hits, we need to fetch their group_id first to be sure (optimization: fetch citizen details for these IDs)
+        const assetCitizenIds = assetHits?.map(x => x.citizen_id) || []
+        if (assetCitizenIds.length > 0) {
+          const { data: assetOwners } = await supabase
+            .from('citizens')
+            .select('id, group_id')
+            .in('id', assetCitizenIds)
+
+          assetOwners?.forEach(x => {
+            matchedCitizenIds.add(x.id)
+            if (x.group_id) matchedGroupIds.add(x.group_id)
+          })
+        }
+
+        if (matchedCitizenIds.size === 0 && matchedGroupIds.size === 0) {
+          setSearchResults([])
           setIsSearching(false)
           return
         }
 
-        // 4. Fetch Full Data for these IDs (Grouped by Citizen)
-        const { data } = await supabase
-          .from('citizens')
-          .select(`
-            id,
-            name,
-            address,
-            rt, rw, group_id,
-            tax_objects (
-              nop,
-              location_name,
-              amount_due,
-              status,
-              year,
-              original_name,
-              blok,
-              persil
-            )
-          `)
-          .in('id', uniqueIds)
-          .limit(20);
+        // 2. Fetch Data
+        // A. Fetch ALL members of matched groups
+        let groupMembers: any[] = []
+        if (matchedGroupIds.size > 0) {
+          const { data } = await supabase
+            .from('citizens')
+            .select(`
+                    id, name, address, rt, rw, group_id,
+                    tax_objects (nop, location_name, amount_due, status, year, original_name, blok, persil)
+                `)
+            .in('group_id', Array.from(matchedGroupIds))
+          groupMembers = data || []
+        }
 
-        // Process Data
-        const processed = data?.map((c: any) => {
+        // B. Fetch ungrouped matched citizens (orphans) 
+        // We only want citizens who matched the query BUT are NOT in the groups we already fetched
+        const fetchedCitizenIdsInGroups = new Set(groupMembers.map(m => m.id))
+        const orphanIdsToFetch = Array.from(matchedCitizenIds).filter(id => !fetchedCitizenIdsInGroups.has(id))
+
+        let orphanMembers: any[] = []
+        if (orphanIdsToFetch.length > 0) {
+          const { data } = await supabase
+            .from('citizens')
+            .select(`
+                    id, name, address, rt, rw, group_id,
+                    tax_objects (nop, location_name, amount_due, status, year, original_name, blok, persil)
+                `)
+            .in('id', orphanIdsToFetch)
+          orphanMembers = data || []
+        }
+
+        // 3. Process & Merge Data
+        const allRaw = [...groupMembers, ...orphanMembers]
+
+        // Process Function (calculate totals, etc)
+        const processCitizen = (c: any) => {
           const assets = c.tax_objects || []
           const totalTax = assets.reduce((sum: number, a: any) => sum + a.amount_due, 0)
           const unpaidCount = assets.filter((a: any) => a.status !== 'paid').length
+          // Calculate if this specific person matches the search query directly (for highlighting)
+          const nameMatch = c.name.toLowerCase().includes(query.toLowerCase())
+          const assetMatch = assets.some((a: any) =>
+            a.nop.includes(query) ||
+            (a.original_name && a.original_name.toLowerCase().includes(query.toLowerCase())) ||
+            (a.blok && a.blok.toLowerCase().includes(query.toLowerCase())) ||
+            (a.persil && a.persil.toLowerCase().includes(query.toLowerCase()))
+          )
+          return { ...c, totalTax, unpaidCount, isMatch: nameMatch || assetMatch }
+        }
 
-          // Collect NOPs for shared check
-          const nops = assets.map((a: any) => a.nop)
+        const processedAll = allRaw.map(processCitizen)
 
-          return {
-            ...c,
-            totalTax,
-            unpaidCount,
-            assets,
-            nops,
-            isDirectMatch: true // Mark as direct search match
+        // 4. Grouping & Sorting logic
+        // Structure: [ { type: 'group', id: '1', members: [...] }, { type: 'single', data: ... } ]
+
+        const finalStructure: any[] = []
+
+        // A. Handle Groups
+        const groupsMap = new Map<string, any[]>()
+        processedAll.forEach(p => {
+          if (p.group_id) {
+            if (!groupsMap.has(p.group_id)) groupsMap.set(p.group_id, [])
+            groupsMap.get(p.group_id)?.push(p)
           }
-        }) || []
-
-        // 5. Check for Shared NOPs
-        const allNops = processed.flatMap((p: any) => p.nops)
-        const nopOwnersMap: Record<string, { name: string, amount: number, status: string }[]> = {}
-
-        if (allNops.length > 0) {
-          const { data: sharedData } = await supabase
-            .from('tax_objects')
-            .select('nop, amount_due, status, citizens(name)')
-            .in('nop', allNops)
-
-          sharedData?.forEach((item: any) => {
-            if (!nopOwnersMap[item.nop]) nopOwnersMap[item.nop] = []
-            if (item.citizens?.name) {
-              const exists = nopOwnersMap[item.nop].some(o => o.name === item.citizens.name)
-              if (!exists) {
-                nopOwnersMap[item.nop].push({
-                  name: item.citizens.name,
-                  amount: item.amount_due,
-                  status: item.status
-                })
-              }
-            }
-          })
-        }
-
-        // Attach Shared Info to Assets
-        const finalResults = processed.map((p: any) => {
-          const enrichedAssets = p.assets.map((a: any) => {
-            const owners = nopOwnersMap[a.nop] || []
-            const otherOwners = owners.filter(o => o.name !== p.name)
-            return {
-              ...a,
-              otherOwners
-            }
-          })
-          return { ...p, assets: enrichedAssets }
         })
 
-        // Sort: Exact name match first, then by unpaid count desc
-        finalResults.sort((a: any, b: any) => {
-          if (a.name.toLowerCase() === query.toLowerCase()) return -1
-          if (b.name.toLowerCase() === query.toLowerCase()) return 1
-          return b.unpaidCount - a.unpaidCount
+        // Sort Groups by ID (assuming numeric usually, but stored as string sometimes?)
+        // Let's try to parse int for sorting
+        const sortedGroupIds = Array.from(groupsMap.keys()).sort((a, b) => {
+          const numA = parseInt(a) || 999999
+          const numB = parseInt(b) || 999999
+          return numA - numB
         })
 
-        setResults(finalResults);
+        sortedGroupIds.forEach(gid => {
+          const members = groupsMap.get(gid)
+          // Sort members: check if match query -> top, else unpaid count
+          members?.sort((a, b) => {
+            if (a.isMatch && !b.isMatch) return -1
+            if (!a.isMatch && b.isMatch) return 1
+            return b.unpaidCount - a.unpaidCount
+          })
+          finalStructure.push({ type: 'group', id: gid, members })
+        })
 
-        // 6. NEW: Fetch Group Members (citizens with same group_id but not in results)
-        const groupIds = finalResults
-          .filter((r: any) => r.group_id)
-          .map((r: any) => r.group_id)
-        const uniqueGroupIds = [...new Set(groupIds)]
-        const directMatchIds = finalResults.map((r: any) => r.id)
+        // B. Handle Orphans (Singles)
+        const orphans = processedAll.filter(p => !p.group_id)
+        orphans.sort((a, b) => b.unpaidCount - a.unpaidCount)
 
-        if (uniqueGroupIds.length > 0) {
-          const { data: relatedData } = await supabase
-            .from('citizens')
-            .select(`
-              id,
-              name,
-              address,
-              rt, rw, group_id,
-              tax_objects (
-                nop,
-                location_name,
-                amount_due,
-                status,
-                year,
-                original_name,
-                blok,
-                persil
-              )
-            `)
-            .in('group_id', uniqueGroupIds)
-            .not('id', 'in', `(${directMatchIds.join(',')})`)
-            .limit(20);
+        orphans.forEach(o => {
+          finalStructure.push({ type: 'single', data: o, id: o.id })
+        })
 
-          const processedRelated = relatedData?.map((c: any) => {
-            const assets = c.tax_objects || []
-            const totalTax = assets.reduce((sum: number, a: any) => sum + a.amount_due, 0)
-            const unpaidCount = assets.filter((a: any) => a.status !== 'paid').length
-
-            return {
-              ...c,
-              totalTax,
-              unpaidCount,
-              assets,
-              isDirectMatch: false // Mark as related, not direct match
-            }
-          }) || []
-
-          setGroupMembers(processedRelated)
-        } else {
-          setGroupMembers([])
-        }
+        setSearchResults(finalStructure)
 
       } catch (err) {
         console.error(err)
@@ -389,47 +361,63 @@ export default function Home() {
 
           {/* Search Results */}
           {query.length >= 3 && (
-            <div className="mt-6 space-y-6">
-              {/* Direct Matches */}
-              {results.length > 0 && (
-                <div className="space-y-4">
-                  {results.map((citizen, i) => (
-                    <CitizenCard
-                      key={citizen.id}
-                      citizen={citizen}
-                      isExpanded={expandedCards[citizen.id] || false}
-                      onToggle={() => toggleCard(citizen.id)}
-                      highlight={true}
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="mt-6 space-y-8">
+              {searchResults.length > 0 ? (
+                searchResults.map((item) => {
+                  if (item.type === 'group') {
+                    // Calculate Group Total
+                    const groupTotal = item.members.reduce((sum: number, m: any) => sum + m.totalTax, 0)
+                    const groupUnpaid = item.members.reduce((sum: number, m: any) => sum + m.unpaidCount, 0)
 
-              {/* Related Group Members */}
-              {groupMembers.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg border border-blue-100 dark:border-blue-900/30">
-                    <Users size={16} className="text-blue-500" />
-                    <span className="font-medium text-blue-700 dark:text-blue-400">Anggota Keluarga/Group Lainnya:</span>
+                    return (
+                      <div key={`group-${item.id}`} className="space-y-3">
+                        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 px-4 py-3 rounded-xl border border-blue-100 dark:border-blue-800">
+                          <div className="flex items-center gap-2">
+                            <Users size={18} className="text-blue-600 dark:text-blue-400" />
+                            <span className="font-bold text-blue-800 dark:text-blue-300">Group {item.id}</span>
+                            <Badge variant="outline" className="ml-2 bg-blue-100/50 text-blue-700 border-blue-200">
+                              {item.members.length} Anggota
+                            </Badge>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Total Group</div>
+                            <div className="font-bold text-blue-700 dark:text-blue-400">Rp {groupTotal.toLocaleString('id-ID')}</div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 pl-2 border-l-2 border-blue-100 dark:border-blue-900/30 ml-4">
+                          {item.members.map((citizen: any) => (
+                            <CitizenCard
+                              key={citizen.id}
+                              citizen={citizen}
+                              isExpanded={expandedCards[citizen.id] || false}
+                              onToggle={() => toggleCard(citizen.id)}
+                              highlight={citizen.isMatch}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  } else {
+                    const citizen = item.data;
+                    return (
+                      <CitizenCard
+                        key={citizen.id}
+                        citizen={citizen}
+                        isExpanded={expandedCards[citizen.id] || false}
+                        onToggle={() => toggleCard(citizen.id)}
+                        highlight={citizen.isMatch}
+                      />
+                    )
+                  }
+                })
+              ) : (
+                !isSearching && (
+                  <div className="text-center p-8 bg-card border border-dashed border-border rounded-xl text-muted-foreground">
+                    <p>Data tidak ditemukan.</p>
+                    <p className="text-sm mt-1 opacity-70">Pastikan ejaan nama atau NOP benar.</p>
                   </div>
-                  {groupMembers.map((citizen, i) => (
-                    <CitizenCard
-                      key={citizen.id}
-                      citizen={citizen}
-                      isExpanded={expandedCards[citizen.id] || false}
-                      onToggle={() => toggleCard(citizen.id)}
-                      highlight={false}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* No Results */}
-              {results.length === 0 && !isSearching && (
-                <div className="text-center p-8 bg-card border border-dashed border-border rounded-xl text-muted-foreground">
-                  <p>Data tidak ditemukan.</p>
-                  <p className="text-sm mt-1 opacity-70">Pastikan ejaan nama atau NOP benar.</p>
-                </div>
+                )
               )}
             </div>
           )}
