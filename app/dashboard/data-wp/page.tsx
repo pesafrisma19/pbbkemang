@@ -295,7 +295,8 @@ export default function DataWPPage() {
                     if (!taxRaw) missingFields.push("NOMINAL_PAJAK")
 
                     if (missingFields.length > 0) {
-                        errorLog.push(`Baris ${rowNum}: Data tidak lengkap (${missingFields.join(", ")})`)
+                        const nameIdentifier = nameRaw ? `(${nameRaw})` : '';
+                        errorLog.push(`Baris ${rowNum} ${nameIdentifier}: Data tidak lengkap (${missingFields.join(", ")})`)
                         skippedCount++
                         continue
                     }
@@ -768,7 +769,7 @@ export default function DataWPPage() {
                         {wp.address}
                         {(wp.rt || wp.rw) && (
                             <span className="ml-1 inline-flex items-center text-[10px] bg-muted px-1 rounded">
-                                {wp.rt ? `RT ${wp.rt}` : ''} {wp.rw ? `/ RW ${wp.rw}` : ''}
+                                {wp.rt ? `RT ${wp.rt.padStart(3, '0')}` : ''} {wp.rw ? `/ RW ${wp.rw.padStart(3, '0')}` : ''}
                             </span>
                         )}
                     </p>
@@ -837,10 +838,17 @@ export default function DataWPPage() {
                                 <p className="text-sm font-medium">
                                     {asset.loc} <span className="text-muted-foreground font-normal text-xs">• Thn {asset.year}</span>
                                 </p>
-                                <p className="text-xs font-mono text-muted-foreground">
-                                    {asset.nop}
-                                    {asset.blok && <span className="ml-2 font-sans bg-muted text-foreground px-1 rounded">Blok {asset.blok}</span>}
-                                    {asset.persil && <span className="ml-1 font-sans bg-muted text-foreground px-1 rounded">Persil {asset.persil}</span>}
+                                <p className="text-xs font-mono text-muted-foreground flex items-center flex-wrap gap-1 mt-0.5">
+                                    {asset.nop.startsWith('TANPA-NOP') ? (
+                                        <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100">
+                                            NOP BELUM ADA
+                                        </Badge>
+                                    ) : (
+                                        <span>{asset.nop}</span>
+                                    )}
+
+                                    {asset.blok && <span className="font-sans bg-muted text-foreground px-1 rounded">Blok {asset.blok}</span>}
+                                    {asset.persil && <span className="font-sans bg-muted text-foreground px-1 rounded">Persil {asset.persil}</span>}
 
                                     {/* Global Shared Indicator */}
                                     {nopOwnersMap[asset.nop] && nopOwnersMap[asset.nop].length > 1 && (
@@ -849,7 +857,7 @@ export default function DataWPPage() {
                                                 e.preventDefault();
                                                 setDetailNop(asset.nop)
                                             }}
-                                            className="ml-2 inline-flex items-center gap-1 bg-warning/10 text-warning px-1.5 py-0.5 rounded text-[10px] font-sans hover:bg-warning/20 transition-colors"
+                                            className="ml-1 inline-flex items-center gap-1 bg-warning/10 text-warning px-1.5 py-0.5 rounded text-[10px] font-sans hover:bg-warning/20 transition-colors"
                                             title="Klik untuk lihat detail pemilik"
                                         >
                                             <div className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></div>
@@ -857,7 +865,7 @@ export default function DataWPPage() {
                                         </button>
                                     )}
                                 </p>
-                                {asset.original_name && <p className="text-[10px] text-muted-foreground italic">Ex: {asset.original_name}</p>}
+                                {asset.original_name && <p className="text-[10px] text-muted-foreground italic mt-0.5">Ex: {asset.original_name}</p>}
                             </div>
                             <div className="flex items-center justify-between sm:justify-end gap-3 flex-1">
                                 <span className="text-sm font-semibold">Rp {asset.tax.toLocaleString('id-ID')}</span>

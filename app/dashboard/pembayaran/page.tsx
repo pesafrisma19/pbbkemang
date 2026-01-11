@@ -274,7 +274,7 @@ export default function PembayaranPage() {
                         {group.address}
                         {(group.rt || group.rw) && (
                             <span className="ml-1 text-[10px] bg-muted px-1 rounded">
-                                RT {group.rt || '-'} / RW {group.rw || '-'}
+                                RT {group.rt ? group.rt.padStart(3, '0') : '-'} / RW {group.rw ? group.rw.padStart(3, '0') : '-'}
                             </span>
                         )}
                     </p>
@@ -295,7 +295,13 @@ export default function PembayaranPage() {
                             {/* Item Details */}
                             <div className="flex-1 space-y-1">
                                 <div className="flex items-center gap-2 text-sm font-medium">
-                                    <span className="bg-muted text-foreground px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
+                                    {item.nop.startsWith('TANPA-NOP') ? (
+                                        <span className="bg-orange-50 text-orange-600 border-orange-200 border px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">
+                                            NOP BELUM ADA
+                                        </span>
+                                    ) : (
+                                        <span className="bg-muted text-foreground px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
+                                    )}
                                     <span>{item.location}</span>
                                     <span className="text-muted-foreground">• Thn {item.year}</span>
                                 </div>
