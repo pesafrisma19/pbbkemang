@@ -521,7 +521,7 @@ export default function PembayaranPage() {
             {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-dashed pt-6 mt-6">
                     <div className="text-sm text-muted-foreground">
-                        Halaman {currentPage} dari {totalPages} ({allResults.length} WP)
+                        Halaman {currentPage} dari {totalPages} ({filteredResults.length} WP)
                     </div>
                     <div className="flex gap-2">
                         <Button
