@@ -344,16 +344,14 @@ export default function DataWPPage() {
                     const nominal = Number(taxRaw) || 0
 
                     // NOP Handling: 
-                    // 1. Convert to string and strip non-digits (remove dots, etc)
-                    let nopClean = String(nopRaw).trim().replace(/\D/g, '')
-
-                    // 2. Expand Short Code logic (if length <= 4)
-                    if (nopClean.length <= 4 && nopClean.length > 0) {
-                        // Pad with leading zeros if less than 4 digits?? No, usually simple concat. 
-                        // User said "1466" -> "320513000500014667"
-                        // Pattern: PREFIX (13) + INPUT (4) + SUFFIX (1) = 18 digits.
-                        // Only if input is exactly 4 digits or less? Let's assume input matches the "Fast Mode" hole.
-                        nopClean = `3205130005000${nopClean}7`
+                    let nopClean = String(nopRaw).trim();
+                    // 1. Convert to string and strip non-digits (remove dots, etc) IF it's a real NOP
+                    if (!nopClean.startsWith('TANPA-NOP')) {
+                        nopClean = nopClean.replace(/\D/g, '')
+                        // 2. Expand Short Code logic (if length <= 4)
+                        if (nopClean.length <= 4 && nopClean.length > 0) {
+                            nopClean = `3205130005000${nopClean}7`
+                        }
                     }
 
                     if (nominal <= 0) {
@@ -543,7 +541,7 @@ export default function DataWPPage() {
                     total_asset: item.tax_objects?.length || 0,
                     total_tax: item.tax_objects?.reduce((sum: number, obj: any) => sum + obj.amount_due, 0) || 0,
                     assets: item.tax_objects?.map((obj: any) => ({
-                        nop: String(obj.nop).replace(/\D/g, ''), // CLEAN DISPLAY DOTS
+                        nop: String(obj.nop).startsWith('TANPA-NOP') ? obj.nop : String(obj.nop).replace(/\D/g, ''), // Preserve TANPA-NOP!
                         loc: obj.location_name,
                         tax: obj.amount_due,
                         year: obj.year || new Date().getFullYear(),
@@ -684,7 +682,7 @@ export default function DataWPPage() {
             if (formAssets.length > 0 && citizenId) {
                 const assetsToInsert = formAssets.map(a => ({
                     citizen_id: citizenId,
-                    nop: String(a.nop).replace(/\D/g, ''), // Ensure clean save
+                    nop: String(a.nop).startsWith('TANPA-NOP') ? a.nop : String(a.nop).replace(/\D/g, ''), // Ensure clean save
                     location_name: a.loc,
                     amount_due: a.tax,
                     status: a.status || 'unpaid',
@@ -1375,6 +1373,23 @@ export default function DataWPPage() {
                     </div>
                 </div >
             </Modal >
+
+            {/* Alert Notification Modal */}
+            <Modal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState({ ...alertState, isOpen: false })}
+                title={alertState.title}
+                footer={
+                    <Button onClick={() => setAlertState({ ...alertState, isOpen: false })}>Mengerti</Button>
+                }
+            >
+                <div className={`p-4 rounded-lg flex items-start gap-3 ${alertState.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-medium">{alertState.message}</p>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Delete Confirmation Modal */}
             < Modal
