@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { Input } from "@/components/ui/Input"
-import { Card, CardContent } from "@/components/ui/Card"
+import { SimpleAccordion } from "@/components/ui/Accordion"
+import { Badge } from "@/components/ui/Badge"
 import { Toggle } from "@/components/ui/Toggle"
 import { Button } from "@/components/ui/Button"
-import { Search, MapPin, Loader2, User, CalendarDays, ChevronDown, ChevronUp, Filter, Users } from "lucide-react"
+import { Search, Loader2, User, CalendarDays, Users, Phone } from "lucide-react"
 
 // Grouped Structure
 type TaxObject = {
@@ -73,7 +74,8 @@ export default function PembayaranPage() {
                         blok
                     )
                 `)
-                .order('name', { ascending: true })
+                .order('group_id', { ascending: true, nullsFirst: false })
+                .order('created_at', { ascending: true })
 
             if (error) throw error
 
@@ -81,7 +83,7 @@ export default function PembayaranPage() {
                 const groups: WPGroup[] = data.map((citizen: any) => {
                     const objects: TaxObject[] = (citizen.tax_objects || []).map((obj: any) => ({
                         id: obj.id,
-                        nop: obj.nop.replace(/[.]/g, ''),
+                        nop: String(obj.nop).startsWith('TANPA-NOP') ? obj.nop : String(obj.nop).replace(/\D/g, ''),
                         location: obj.location_name,
                         year: obj.year || new Date().getFullYear(),
                         amount: obj.amount_due,
@@ -178,116 +180,60 @@ export default function PembayaranPage() {
         return stats
     }, [allData])
 
-    // Filter and Group Logic with Group Member Search
     const filteredResults = useMemo(() => {
         const lowerSearch = searchTerm.toLowerCase().trim()
-        const cleanSearch = searchTerm.replace(/[.]/g, '')
+        const cleanSearch = searchTerm.replace(/\D/g, '')
 
-        // Helper to check status filter
+        const checkSearch = (g: WPGroup) => {
+            if (!lowerSearch) return true;
+            if (g.name.toLowerCase().includes(lowerSearch)) return true
+            if (g.address?.toLowerCase().includes(lowerSearch)) return true
+            if (g.group_id && g.group_id.toLowerCase().includes(lowerSearch)) return true
+
+            return g.tax_objects.some(obj => 
+                obj.nop.includes(cleanSearch) ||
+                (obj.original_name && obj.original_name.toLowerCase().includes(lowerSearch)) ||
+                (obj.persil && obj.persil.toLowerCase().includes(lowerSearch)) ||
+                (obj.blok && obj.blok.toLowerCase().includes(lowerSearch))
+            )
+        }
+
         const checkStatus = (g: WPGroup) => {
             if (filterStatus === 'unpaid' && g.total_unpaid === 0) return false;
             if (filterStatus === 'paid' && g.total_unpaid > 0) return false;
             return true;
         }
 
-        // If no search term, return simple list (but maybe we should group them too? User asked for search specific behavior)
-        // Let's stick to simple list for no search to keep it clean, or applies grouping if desired.
-        // For now, if no search, just return all flat (or existing behavior). 
-        // ACTUALLY, usually admin wants to see list. Let's keep flat if no search.
-        if (!lowerSearch) {
-            // For default view, we might not want complex grouping unless requested. 
-            // But to be consistent, maybe just stick to flat list or Grouped? 
-            // The user request was specific to "saat pencarian".
-            // So if no search, return flat list as "singles".
-            const filtered = allData.filter(checkStatus)
-            return filtered.map(d => ({ type: 'single', data: d, id: d.citizen_id }))
-        }
+        const filteredCitizens = allData.filter(g => checkSearch(g) && checkStatus(g))
 
-        // 1. Find matched citizens
-        const matchedCitizens = allData.filter(g => {
-            if (!checkStatus(g)) return false;
+        const groupedData: any[] = [];
+        const groupsMap = new Map<string, WPGroup[]>();
+        const orphans: WPGroup[] = [];
 
-            // Name/Address Match
-            if (g.name.toLowerCase().includes(lowerSearch)) return true
-            if (g.address?.toLowerCase().includes(lowerSearch)) return true
+        filteredCitizens.forEach(wp => {
+            if (wp.group_id) {
+                const groupKey = `${wp.group_id}-${wp.address}`;
+                if (!groupsMap.has(groupKey)) groupsMap.set(groupKey, []);
+                groupsMap.get(groupKey)?.push(wp);
+            } else {
+                orphans.push(wp);
+            }
+        });
 
-            // NOP Match
-            const hasMatchingObject = g.tax_objects.some(obj => obj.nop.includes(cleanSearch))
-            return hasMatchingObject
-        })
+        const sortedGroupKeys = Array.from(groupsMap.keys()).sort((a, b) => {
+            const idA = a.split('-')[0];
+            const idB = b.split('-')[0];
+            return String(idA).localeCompare(String(idB), undefined, { numeric: true });
+        });
 
-        if (matchedCitizens.length === 0) return []
+        sortedGroupKeys.forEach(gk => {
+            groupedData.push({ type: 'group', id: gk, members: groupsMap.get(gk) });
+        });
+        orphans.forEach(wp => {
+            groupedData.push({ type: 'single', wp });
+        });
 
-        // 2. Identify Groups and Orphans
-        const matchedGroupIds = new Set<string>()
-        const matchedCitizenIds = new Set<string>()
-
-        matchedCitizens.forEach(c => {
-            matchedCitizenIds.add(c.citizen_id)
-            if (c.group_id) matchedGroupIds.add(c.group_id)
-        })
-
-        const finalStructure: any[] = []
-
-        // 3. Handle Groups
-        if (matchedGroupIds.size > 0) {
-            const groupsMap = new Map<string, WPGroup[]>()
-            const groupIdsArr = Array.from(matchedGroupIds)
-
-            // We need to fetch ALL members of these groups from allData, even if they didn't match the search
-            // But we must respect the status filter? 
-            // Usually "Group View" shows everyone to see the context. 
-            // If I filter by "Unpaid", I probably still want to see the "Paid" members of that group?
-            // The user said "tampil idah dan keluarganya". Implies context.
-            // Let's include all members, but maybe visually dim those who don't match status?
-            // Or just filter them out if strict?
-            // Let's assume strict filter for now, OR show all but highlight matches.
-            // Given the previous code filtered related members by status, I will stick to filtering by status.
-
-            allData.forEach(g => {
-                if (g.group_id && matchedGroupIds.has(g.group_id)) {
-                    if (checkStatus(g)) { // Only include if matches status filter
-                        if (!groupsMap.has(g.group_id)) groupsMap.set(g.group_id, [])
-                        groupsMap.get(g.group_id)?.push({
-                            ...g,
-                            isGroupMember: !matchedCitizenIds.has(g.citizen_id) // Mark as just a member if not a direct match
-                        })
-                    }
-                }
-            })
-
-            // Sort Groups
-            const sortedGroupIds = Array.from(groupsMap.keys()).sort((a, b) => {
-                const numA = parseInt(a) || 999999
-                const numB = parseInt(b) || 999999
-                return numA - numB
-            })
-
-            sortedGroupIds.forEach(gid => {
-                const members = groupsMap.get(gid)
-                if (members && members.length > 0) {
-                    // Sort members: direct matches first
-                    members.sort((a, b) => {
-                        const aMatch = matchedCitizenIds.has(a.citizen_id)
-                        const bMatch = matchedCitizenIds.has(b.citizen_id)
-                        if (aMatch && !bMatch) return -1
-                        if (!aMatch && bMatch) return 1
-                        return 0
-                    })
-                    finalStructure.push({ type: 'group', id: gid, members })
-                }
-            })
-        }
-
-        // 4. Handle Orphans
-        // Citizens who matched search but have no group_id (or their group was filtered out completely?)
-        // Basically matchedCitizens who don't have a group_id
-        const orphans = matchedCitizens.filter(c => !c.group_id)
-        orphans.forEach(c => {
-            finalStructure.push({ type: 'single', data: c, id: c.citizen_id })
-        })
-
-        return finalStructure
+        return groupedData;
     }, [allData, searchTerm, filterStatus])
 
     // Pagination Logic
@@ -296,133 +242,179 @@ export default function PembayaranPage() {
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     )
-    // Find the split point in paginated results
-    // Removed old pagination logic to support grouped items
-    // const paginatedRelated = ...
+    // Prepare items for SimpleAccordion
+    const items = paginatedItems.map((item: any) => {
+        if (item.type === 'group') {
+            const members = item.members as WPGroup[];
+            const primaryWp = members[0];
+            const displayGroupId = item.id.split('-')[0];
+            const address = primaryWp.address;
+            const totalUnpaid = members.reduce((sum, m) => sum + m.total_unpaid, 0);
 
-    // Reset page on search or filter change
-    useEffect(() => {
-        setCurrentPage(1)
-    }, [searchTerm, filterStatus])
-
-    // Helper to format date
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return ""
-        const d = new Date(dateString)
-        return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    }
-
-    // Render WP Card
-    const renderWPCard = (group: WPGroup) => (
-        <div key={group.citizen_id} className={`border rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-md ${group.isGroupMember ? 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10' : 'bg-card text-card-foreground'}`}>
-            {/* WP Header */}
-            <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${group.isGroupMember ? 'bg-blue-50/50 dark:bg-blue-900/20' : 'bg-muted/30'}`}>
-                <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <div className="flex items-center gap-2">
-                            <User size={18} className={group.isGroupMember ? "text-blue-500" : "text-blue-600"} />
-                            <span className="font-bold text-lg">{group.name}</span>
-                        </div>
-                        {group.isGroupMember && (
-                            <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                                KELUARGA
-                            </span>
-                        )}
-                        {group.group_id && (
+            return {
+                id: `group-${item.id}`,
+                title: (
+                    <div className="flex items-center justify-between w-full pr-4">
+                        <div className="text-left">
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 font-medium whitespace-nowrap">
-                                    Group {group.group_id}
-                                </span>
-                                {groupStats[group.group_id] > 0 && (
-                                    <span className="hidden"></span>
+                                <Users size={16} className="text-blue-600 hidden sm:block" />
+                                <p className="font-semibold">{primaryWp.name}</p>
+                                <Badge variant="outline" className="text-[10px] h-5 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                                    Grp {displayGroupId}
+                                </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {address} • {members.length} Warga
+                            </p>
+                        </div>
+                        <div className="text-right flex flex-col items-end gap-1">
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Sisa Tagihan</p>
+                            <span className={`font-bold text-sm block ${totalUnpaid > 0 ? 'text-destructive' : 'text-success'}`}>
+                                Rp {totalUnpaid.toLocaleString('id-ID')}
+                            </span>
+                        </div>
+                    </div>
+                ),
+                content: (
+                    <div className="space-y-4 pt-3 border-t border-border mt-2">
+                        {members.map(wp => (
+                            <div key={wp.citizen_id} className="bg-background rounded-xl border border-border/50 p-4 shadow-sm">
+                                <div className="flex justify-between items-start border-b pb-3 mb-3 bg-muted/20 -mx-4 -mt-4 p-4 rounded-t-xl">
+                                    <div className="flex items-center gap-2">
+                                        <User size={16} className="text-blue-600" />
+                                        <p className="font-semibold text-sm">{wp.name}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className={`font-bold text-sm ${wp.total_unpaid > 0 ? 'text-destructive' : 'text-success'}`}>
+                                            Menunggak Rp {wp.total_unpaid.toLocaleString('id-ID')}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                {wp.tax_objects.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {wp.tax_objects.map((asset) => (
+                                            <div key={asset.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg gap-3 border transition-colors ${asset.paid ? 'bg-success/10 border-success/20' : 'bg-muted/40'}`}>
+                                                <div className="flex-1">
+                                                    <p className="text-xs font-medium">{asset.location} <span className="text-muted-foreground font-normal text-[10px]">• Thn {asset.year}</span></p>
+                                                    <p className="text-[10px] font-mono text-muted-foreground flex gap-1 mt-0.5 whitespace-nowrap overflow-x-auto">
+                                                        {asset.nop.startsWith('TANPA-NOP') ? (
+                                                            <span className="bg-orange-50 text-orange-600 border-orange-200 border px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider">
+                                                                NOP BELUM ADA
+                                                            </span>
+                                                        ) : (
+                                                            <span>{asset.nop}</span>
+                                                        )}
+                                                        {asset.blok && <span>• Blok {asset.blok}</span>}
+                                                        {asset.persil && <span>• Persil {asset.persil}</span>}
+                                                    </p>
+                                                    {asset.original_name && <p className="text-[10px] text-muted-foreground italic mt-0.5">Ex: {asset.original_name}</p>}
+                                                </div>
+                                                <div className="flex items-center justify-between sm:justify-end gap-4 flex-1">
+                                                    <div className="text-right min-w-[90px]">
+                                                        <span className="text-sm font-bold block">Rp {Number(asset.amount).toLocaleString('id-ID')}</span>
+                                                        {asset.paid && asset.paidAt && (
+                                                            <div className="text-[9px] text-success flex items-center justify-end gap-1 mt-0.5">
+                                                                <CalendarDays size={9} />
+                                                                {formatDate(asset.paidAt)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col items-center gap-1 min-w-[70px]">
+                                                        <Toggle
+                                                            checked={asset.paid}
+                                                            onCheckedChange={() => handleToggle(asset.id, asset.paid, wp.citizen_id)}
+                                                        />
+                                                        <span className={`text-[9px] font-bold ${asset.paid ? 'text-success' : 'text-muted-foreground'}`}>
+                                                            {asset.paid ? 'LUNAS' : 'BELUM'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-2 text-muted-foreground text-xs">Belum ada aset.</div>
                                 )}
                             </div>
-                        )}
+                        ))}
                     </div>
-                    <p className="text-sm text-muted-foreground ml-6 mt-1">
-                        {group.address}
-                        {(group.rt || group.rw) && (
-                            <span className="ml-1 text-[10px] bg-muted px-1 rounded">
-                                RT {group.rt ? group.rt.padStart(3, '0') : '-'} / RW {group.rw ? group.rw.padStart(3, '0') : '-'}
-                            </span>
-                        )}
-                    </p>
-                </div>
-                <div className="text-right">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Sisa Tagihan</p>
-                    <p className={`text-xl font-bold font-mono ${group.total_unpaid > 0 ? 'text-destructive' : 'text-success'}`}>
-                        Rp {group.total_unpaid.toLocaleString('id-ID')}
-                    </p>
-                </div>
-            </div>
-
-            {/* List of Tax Objects */}
-            <div className="divide-y">
-                {group.tax_objects.map((item) => (
-                    <div key={item.id} className={`p-4 transition-colors ${item.paid ? 'bg-success/10' : 'hover:bg-muted/20'}`}>
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            {/* Item Details */}
-                            <div className="flex-1 space-y-1">
-                                <div className="flex items-center gap-2 text-sm font-medium flex-wrap">
-                                    {item.nop.startsWith('TANPA-NOP') ? (
-                                        <span className="bg-orange-50 text-orange-600 border-orange-200 border px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">
-                                            NOP BELUM ADA
-                                        </span>
-                                    ) : (
-                                        <span className="bg-muted text-foreground px-2 py-0.5 rounded text-xs font-mono">{item.nop}</span>
-                                    )}
-                                    <span>{item.location}</span>
-                                    <span className="text-muted-foreground">• Thn {item.year}</span>
-                                </div>
-
-                                {/* Extra Details: Original Name, Persil, Blok */}
-                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground ml-1">
-                                    {item.original_name && (
-                                        <span className="flex items-center gap-1">
-                                            Ex: <span className="text-foreground/80 font-medium">{item.original_name}</span>
-                                        </span>
-                                    )}
-                                    {item.blok && (
-                                        <span className="bg-muted/50 px-1.5 rounded border border-border">
-                                            Blok: {item.blok}
-                                        </span>
-                                    )}
-                                    {item.persil && (
-                                        <span className="bg-muted/50 px-1.5 rounded border border-border">
-                                            Persil: {item.persil}
-                                        </span>
-                                    )}
-                                </div>
+                )
+            }
+        } else {
+            const wp = item.data as WPGroup;
+            return {
+                id: wp.citizen_id,
+                title: (
+                    <div className="flex items-center justify-between w-full pr-4">
+                        <div className="text-left">
+                            <div className="flex items-center gap-2">
+                                <p className="font-semibold">{wp.name}</p>
                             </div>
-
-                            {/* Action Section */}
-                            <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto mt-2 sm:mt-0">
-                                <div className="text-right min-w-[100px]">
-                                    <p className="font-bold text-sm">Rp {Number(item.amount).toLocaleString('id-ID')}</p>
-                                    {item.paid && item.paidAt && (
-                                        <div className="text-[10px] text-success flex items-center justify-end gap-1">
-                                            <CalendarDays size={10} />
-                                            {formatDate(item.paidAt)}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex flex-col items-center gap-1 min-w-[70px]">
-                                    <Toggle
-                                        checked={item.paid}
-                                        onCheckedChange={() => handleToggle(item.id, item.paid, group.citizen_id)}
-                                    />
-                                    <span className={`text-[10px] font-bold ${item.paid ? 'text-success' : 'text-muted-foreground'}`}>
-                                        {item.paid ? 'LUNAS' : 'BELUM'}
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {wp.address}
+                                {(wp.rt || wp.rw) && (
+                                    <span className="ml-1 text-[10px] bg-muted px-1 rounded">
+                                        {wp.rt && `RT ${wp.rt}`} {wp.rw && `/ RW ${wp.rw}`}
                                     </span>
-                                </div>
-                            </div>
+                                )}
+                            </p>
+                        </div>
+                        <div className="text-right flex flex-col items-end gap-1">
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Sisa Tagihan</p>
+                            <span className={`font-bold text-sm block ${wp.total_unpaid > 0 ? 'text-destructive' : 'text-success'}`}>
+                                Rp {wp.total_unpaid.toLocaleString('id-ID')}
+                            </span>
                         </div>
                     </div>
-                ))}
-            </div>
-        </div>
-    )
+                ),
+                content: (
+                    <div className="space-y-3 pt-2 border-t border-border mt-2">
+                        {wp.tax_objects.length > 0 ? (
+                            wp.tax_objects.map((asset) => (
+                                <div key={asset.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg gap-3 border transition-colors ${asset.paid ? 'bg-success/10 border-success/20' : 'bg-muted/40'}`}>
+                                    <div className="flex-1">
+                                        <p className="text-xs font-medium">{asset.location} <span className="text-muted-foreground font-normal text-[10px]">• Thn {asset.year}</span></p>
+                                        <p className="text-[10px] font-mono text-muted-foreground flex gap-1 mt-0.5 whitespace-nowrap overflow-x-auto">
+                                            {asset.nop.startsWith('TANPA-NOP') ? (
+                                                <span className="bg-orange-50 text-orange-600 border-orange-200 border px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider">
+                                                    NOP BELUM ADA
+                                                </span>
+                                            ) : (
+                                                <span>{asset.nop}</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center justify-between sm:justify-end gap-4 flex-1">
+                                        <div className="text-right min-w-[90px]">
+                                            <span className="text-sm font-bold block">Rp {Number(asset.amount).toLocaleString('id-ID')}</span>
+                                            {asset.paid && asset.paidAt && (
+                                                <div className="text-[9px] text-success flex items-center justify-end gap-1 mt-0.5">
+                                                    <CalendarDays size={9} />
+                                                    {formatDate(asset.paidAt)}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col items-center gap-1 min-w-[70px]">
+                                            <Toggle
+                                                checked={asset.paid}
+                                                onCheckedChange={() => handleToggle(asset.id, asset.paid, wp.citizen_id)}
+                                            />
+                                            <span className={`text-[9px] font-bold ${asset.paid ? 'text-success' : 'text-muted-foreground'}`}>
+                                                {asset.paid ? 'LUNAS' : 'BELUM'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-2 text-muted-foreground text-xs">Belum ada aset.</div>
+                        )}
+                    </div>
+                )
+            }
+        }
+    })
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-12">
@@ -475,44 +467,12 @@ export default function PembayaranPage() {
 
             {isLoading ? (
                 <div className="text-center py-12"><Loader2 className="animate-spin inline mr-2" /> Memuat Data Tagihan...</div>
-            ) : (
-                <div className="space-y-6">
-                    {/* Grouped Matches */}
-                    {paginatedItems.map((item: any) => {
-                        if (item.type === 'group') {
-                            const groupUnpaid = item.members.reduce((sum: number, m: any) => sum + m.total_unpaid, 0)
-                            return (
-                                <div key={`group-${item.id}`} className="space-y-3">
-                                    <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 px-4 py-3 rounded-xl border border-blue-100 dark:border-blue-800">
-                                        <div className="flex items-center gap-2">
-                                            <Users size={18} className="text-blue-600 dark:text-blue-400" />
-                                            <span className="font-bold text-blue-800 dark:text-blue-300">Group {item.id}</span>
-                                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100/50 text-blue-700 border border-blue-200">
-                                                {item.members.length} Anggota
-                                            </span>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Total Group</div>
-                                            <div className="font-bold text-blue-700 dark:text-blue-400">Rp {groupUnpaid.toLocaleString('id-ID')}</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-6 pl-2 border-l-2 border-blue-100 dark:border-blue-900/30 ml-4">
-                                        {item.members.map((member: WPGroup) => renderWPCard(member))}
-                                    </div>
-                                </div>
-                            )
-                        } else {
-                            return renderWPCard(item.data)
-                        }
-                    })}
-
-                    {filteredResults.length === 0 && (
-                        <div className="text-center py-12 text-muted-foreground">
-                            Data tidak ditemukan
-                        </div>
-                    )}
+            ) : items.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                    Data tidak ditemukan
                 </div>
+            ) : (
+                <SimpleAccordion items={items} />
             )}
 
             {/* Pagination Controls */}
