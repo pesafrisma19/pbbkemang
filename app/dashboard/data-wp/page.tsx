@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 import { SimpleAccordion } from "@/components/ui/Accordion"
 import { Badge } from "@/components/ui/Badge"
-import { Search, Upload, Plus, Pencil, Trash, Loader2, Phone, MessageCircle, FileDown, AlertCircle, Users } from "lucide-react"
+import { Search, Upload, Plus, Pencil, Trash, Loader2, Phone, MessageCircle, FileDown, AlertCircle, Users, X } from "lucide-react"
 import { Modal } from "@/components/ui/Modal"
 import * as XLSX from 'xlsx'
 
@@ -100,20 +100,58 @@ export default function DataWPPage() {
     const itemsPerPage = 10
 
     const [localData, setLocalData] = useState<WPData[]>([])
+    const [filterKampung, setFilterKampung] = useState<string | null>(null)
 
-    const filteredData = localData.filter(wp =>
-        wp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (wp.group_id && wp.group_id.toLowerCase().includes(searchTerm.toLowerCase())) || // Search Group
-        wp.assets.some(a =>
-            a.nop.includes(searchTerm) ||
-            (a.original_name && a.original_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (a.persil && a.persil.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (a.blok && a.blok.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
-    )
+    // Extract unique kampungs dynamically
+    const uniqueKampungs = Array.from(new Set(localData.map(wp => wp.address))).filter(Boolean).sort()
 
-    const totalPages = Math.ceil(filteredData.length / itemsPerPage)
-    const paginatedData = filteredData.slice(
+    // 1. Filter By Kampung & Search
+    const filteredData = localData.filter(wp => {
+        const matchKampung = filterKampung ? wp.address === filterKampung : true;
+        const matchSearch = wp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (wp.group_id && wp.group_id.toLowerCase().includes(searchTerm.toLowerCase())) || // Search Group
+            wp.assets.some(a =>
+                a.nop.includes(searchTerm) ||
+                (a.original_name && a.original_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (a.persil && a.persil.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (a.blok && a.blok.toLowerCase().includes(searchTerm.toLowerCase()))
+            )
+        return matchKampung && matchSearch
+    })
+
+    // 2. Group Validated Data
+    const groupedData: any[] = [];
+    const groupsMap = new Map<string, WPData[]>();
+    const orphans: WPData[] = [];
+
+    filteredData.forEach(wp => {
+        if (wp.group_id) {
+            // Group by combination of group_id and address to avoid mixing Kampung A and B
+            const groupKey = `${wp.group_id}-${wp.address}`;
+            if (!groupsMap.has(groupKey)) groupsMap.set(groupKey, []);
+            groupsMap.get(groupKey)?.push(wp);
+        } else {
+            orphans.push(wp);
+        }
+    });
+
+    // Sort ascending by group_id numeric value (extract from groupKey)
+    const sortedGroupKeys = Array.from(groupsMap.keys()).sort((a, b) => {
+        const idA = a.split('-')[0];
+        const idB = b.split('-')[0];
+        return String(idA).localeCompare(String(idB), undefined, { numeric: true });
+    });
+
+    sortedGroupKeys.forEach(gk => {
+        groupedData.push({ type: 'group', id: gk, members: groupsMap.get(gk) });
+    });
+    orphans.forEach(wp => {
+        groupedData.push({ type: 'single', wp });
+    });
+
+    // 3. Apply Pagination on Grouped Content
+    const totalPages = Math.ceil(groupedData.length / itemsPerPage)
+    const paginatedData = groupedData.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     )
@@ -121,7 +159,7 @@ export default function DataWPPage() {
     // Reset page when search changes
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchTerm])
+    }, [searchTerm, filterKampung])
 
     // --- Excel Handling ---
 
@@ -752,156 +790,148 @@ export default function DataWPPage() {
         return `https://wa.me/${p}`;
     }
 
-    const items = paginatedData.map(wp => ({
-        id: wp.id,
-        title: (
-            <div className="flex items-center justify-between w-full pr-4">
-                <div className="text-left">
-                    <div className="flex items-center gap-2">
-                        <p className="font-semibold">{wp.name}</p>
-                        {wp.group_id && (
-                            <Badge variant="outline" className="text-[10px] h-5 px-1 bg-blue-50 text-blue-700 border-blue-200" title={`No. Group / Keluarga: ${wp.group_id}`}>
-                                <Users size={10} className="mr-1" /> Grp {wp.group_id}
-                            </Badge>
-                        )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        {wp.address}
-                        {(wp.rt || wp.rw) && (
-                            <span className="ml-1 inline-flex items-center text-[10px] bg-muted px-1 rounded">
-                                {wp.rt ? `RT ${wp.rt.padStart(3, '0')}` : ''} {wp.rw ? `/ RW ${wp.rw.padStart(3, '0')}` : ''}
-                            </span>
-                        )}
-                    </p>
+    const items = paginatedData.map((item, index) => {
+        if (item.type === 'group') {
+            const members = item.members as WPData[];
+            const primaryWp = members[0];
+            const displayGroupId = item.id.split('-')[0];
+            const address = primaryWp.address;
+            const totalTax = members.reduce((sum, m) => sum + m.total_tax, 0);
+            const totalAssets = members.reduce((sum, m) => sum + m.total_asset, 0);
 
-                    {/* Search Match Highlight */}
-                    {searchTerm && (
-                        <div className="mt-1">
-                            {wp.assets.map(a => {
-                                const matchParts = []
-                                const lowerTerm = searchTerm.toLowerCase()
-                                // Search against dot-less state
-                                if (a.nop.includes(searchTerm)) matchParts.push(`NOP: ${a.nop}`)
-                                if (a.original_name?.toLowerCase().includes(lowerTerm)) matchParts.push(`Ex: ${a.original_name}`)
-                                if (a.blok?.toLowerCase().includes(lowerTerm)) matchParts.push(`Blok ${a.blok}`)
-                                if (a.persil?.toLowerCase().includes(lowerTerm)) matchParts.push(`Persil ${a.persil}`)
-
-                                if (matchParts.length > 0) {
-                                    return (
-                                        <Badge key={a.nop} variant="outline" className="mr-1 text-[10px] h-4 px-1 font-normal bg-warning/10 text-warning border-warning/20">
-                                            {matchParts.join(", ")}
-                                        </Badge>
-                                    )
-                                }
-                                return null
-                            })}
-                        </div>
-                    )}
-                </div>
-                <div className="text-right flex items-center gap-3">
-                    <Badge variant="outline" className="hidden sm:inline-flex">{wp.total_asset} Kikitir</Badge>
-
-                    {/* WhatsApp Button */}
-                    {wp.whatsapp && (
-                        <a
-                            href={getWaLink(wp.whatsapp)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-success/10 text-success p-1.5 rounded-full hover:bg-success/20 transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                            title="Chat WhatsApp"
-                        >
-                            <MessageCircle size={16} />
-                        </a>
-                    )}
-
-                    <div>
-                        <span className="font-bold text-sm block">Rp {wp.total_tax.toLocaleString('id-ID')}</span>
-                    </div>
-                </div>
-            </div>
-        ),
-        content: (
-            <div className="space-y-3 pt-2 border-t border-border">
-                {/* Meta Info */}
-                <div className="flex gap-4 text-xs text-muted-foreground pb-2">
-                    <div className="flex items-center gap-1">
-                        <Phone size={12} /> {wp.whatsapp || "-"}
-                    </div>
-                    <div>NIK: {wp.nik || "-"}</div>
-                </div>
-
-                {wp.assets.length > 0 ? (
-                    wp.assets.map((asset, idx) => (
-                        <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-muted/30 p-3 rounded-lg gap-2">
-                            <div>
-                                <p className="text-sm font-medium">
-                                    {asset.loc} <span className="text-muted-foreground font-normal text-xs">• Thn {asset.year}</span>
-                                </p>
-                                <p className="text-xs font-mono text-muted-foreground flex items-center flex-wrap gap-1 mt-0.5">
-                                    {asset.nop.startsWith('TANPA-NOP') ? (
-                                        <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100">
-                                            NOP BELUM ADA
-                                        </Badge>
-                                    ) : (
-                                        <span>{asset.nop}</span>
-                                    )}
-
-                                    {asset.blok && <span className="font-sans bg-muted text-foreground px-1 rounded">Blok {asset.blok}</span>}
-                                    {asset.persil && <span className="font-sans bg-muted text-foreground px-1 rounded">Persil {asset.persil}</span>}
-
-                                    {/* Global Shared Indicator */}
-                                    {nopOwnersMap[asset.nop] && nopOwnersMap[asset.nop].length > 1 && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                setDetailNop(asset.nop)
-                                            }}
-                                            className="ml-1 inline-flex items-center gap-1 bg-warning/10 text-warning px-1.5 py-0.5 rounded text-[10px] font-sans hover:bg-warning/20 transition-colors"
-                                            title="Klik untuk lihat detail pemilik"
-                                        >
-                                            <div className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></div>
-                                            {nopOwnersMap[asset.nop].length} Pemilik
-                                        </button>
-                                    )}
-                                </p>
-                                {asset.original_name && <p className="text-[10px] text-muted-foreground italic mt-0.5">Ex: {asset.original_name}</p>}
-                            </div>
-                            <div className="flex items-center justify-between sm:justify-end gap-3 flex-1">
-                                <span className="text-sm font-semibold">Rp {asset.tax.toLocaleString('id-ID')}</span>
-                                <Badge variant={asset.status === 'paid' ? 'success' : 'destructive'}>
-                                    {asset.status === 'paid' ? 'LUNAS' : 'BELUM'}
+            return {
+                id: `group-${item.id}`,
+                title: (
+                    <div className="flex items-center justify-between w-full pr-4">
+                        <div className="text-left">
+                            <div className="flex items-center gap-2">
+                                <Users size={16} className="text-blue-600 hidden sm:block" />
+                                <p className="font-semibold">{primaryWp.name} dkk</p>
+                                <Badge variant="outline" className="text-[10px] h-5 px-1 bg-blue-50 text-blue-700 border-blue-200">
+                                    Grp {displayGroupId}
                                 </Badge>
                             </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {address} • {members.length} Warga
+                            </p>
                         </div>
-                    ))
-                ) : (
-                    <div className="text-center py-4 text-muted-foreground text-sm">
-                        Belum ada data kikitir/tanah.
+                        <div className="text-right flex items-center gap-3">
+                            <Badge variant="outline" className="hidden sm:inline-flex">{totalAssets} Kikitir</Badge>
+                            <div>
+                                <span className="font-bold text-sm block">Rp {totalTax.toLocaleString('id-ID')}</span>
+                            </div>
+                        </div>
                     </div>
-                )}
-
-                <div className="flex justify-end gap-2 mt-4 pt-2 border-t border-dashed">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 gap-1"
-                        onClick={() => handleEditClick(wp)}
-                    >
-                        <Pencil size={14} /> Edit
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="danger"
-                        className="h-8 gap-1"
-                        onClick={() => confirmDelete(wp.id, wp.name)}
-                    >
-                        <Trash size={14} /> Hapus
-                    </Button>
-                </div>
-            </div>
-        )
-    }))
+                ),
+                content: (
+                    <div className="space-y-4 pt-3 border-t border-border mt-2">
+                        {members.map(wp => (
+                            <div key={wp.id} className="bg-background rounded-xl border border-border/50 p-4 shadow-sm">
+                                <div className="flex justify-between items-start border-b pb-3 mb-3">
+                                    <div>
+                                        <p className="font-semibold text-sm">{wp.name}</p>
+                                        <div className="flex gap-4 text-xs text-muted-foreground mt-1">
+                                            <span className="flex items-center gap-1"><Phone size={10} /> {wp.whatsapp || "-"}</span>
+                                            <span>NIK: {wp.nik || "-"}</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="font-bold text-sm">Rp {wp.total_tax.toLocaleString('id-ID')}</span>
+                                        <div className="flex justify-end gap-2 mt-2">
+                                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); handleEditClick(wp) }}>Edit</Button>
+                                            <Button size="sm" variant="danger" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); confirmDelete(wp.id, wp.name) }}>Hapus</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {wp.assets.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {wp.assets.map((asset, idx) => (
+                                            <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-muted/40 p-2.5 rounded-lg gap-2 border">
+                                                <div>
+                                                    <p className="text-xs font-medium">{asset.loc} <span className="text-muted-foreground font-normal text-[10px]">• Thn {asset.year}</span></p>
+                                                    <p className="text-[10px] font-mono text-muted-foreground flex gap-1 mt-0.5 whitespace-nowrap overflow-x-auto">
+                                                        <span>{asset.nop.startsWith('TANPA') ? 'NO-NOP' : asset.nop}</span>
+                                                        {asset.blok && <span>• Blok {asset.blok}</span>}
+                                                        {asset.persil && <span>• Persil {asset.persil}</span>}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center justify-between sm:justify-end gap-2 flex-1">
+                                                    <span className="text-xs font-semibold">Rp {asset.tax.toLocaleString('id-ID')}</span>
+                                                    <Badge variant={asset.status === 'paid' ? 'success' : 'destructive'} className="text-[9px] px-1 h-4">
+                                                        {asset.status === 'paid' ? 'LUNAS' : 'BELUM'}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-2 text-muted-foreground text-xs">Belum ada aset.</div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )
+            }
+        } else {
+            const wp = item.wp as WPData;
+            return {
+                id: wp.id,
+                title: (
+                    <div className="flex items-center justify-between w-full pr-4">
+                        <div className="text-left">
+                            <div className="flex items-center gap-2">
+                                <p className="font-semibold">{wp.name}</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {wp.address}
+                                {(wp.rt || wp.rw) && (
+                                    <span className="ml-1 text-[10px] bg-muted px-1 rounded">
+                                        {wp.rt && `RT ${wp.rt}`} {wp.rw && `/ RW ${wp.rw}`}
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                        <div className="text-right flex items-center gap-3">
+                            <Badge variant="outline" className="hidden sm:inline-flex">{wp.total_asset} Kikitir</Badge>
+                            <div>
+                                <span className="font-bold text-sm block">Rp {wp.total_tax.toLocaleString('id-ID')}</span>
+                            </div>
+                        </div>
+                    </div>
+                ),
+                content: (
+                    <div className="space-y-3 pt-2 border-t border-border">
+                        <div className="flex gap-4 text-xs text-muted-foreground pb-2">
+                            <div className="flex items-center gap-1"><Phone size={12} /> {wp.whatsapp || "-"}</div>
+                            <div>NIK: {wp.nik || "-"}</div>
+                        </div>
+                        {wp.assets.length > 0 ? (
+                            wp.assets.map((asset, idx) => (
+                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-muted/30 p-3 rounded-lg gap-2">
+                                    <div>
+                                        <p className="text-sm font-medium">{asset.loc}</p>
+                                        <p className="text-xs font-mono text-muted-foreground mt-0.5">
+                                            {asset.nop.startsWith('TANPA') ? 'NO-NOP' : asset.nop}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm font-semibold">Rp {asset.tax.toLocaleString('id-ID')}</span>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-4 text-muted-foreground text-sm">Belum ada Kikitir.</div>
+                        )}
+                        <div className="flex justify-end gap-2 mt-4 pt-2 border-t border-dashed">
+                            <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => handleEditClick(wp)}>Edit</Button>
+                            <Button size="sm" variant="danger" className="h-8 gap-1" onClick={() => confirmDelete(wp.id, wp.name)}>Hapus</Button>
+                        </div>
+                    </div>
+                )
+            }
+        }
+    })
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-12">
@@ -959,14 +989,42 @@ export default function DataWPPage() {
                 </div>
             </div>
 
-            <div className="glass-card p-4 rounded-xl flex items-center gap-4">
-                <Input
-                    placeholder="Cari Nama, NOP, Blok, Persil, atau Nama Asal..."
-                    icon={Search}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="bg-background/50 border-none shadow-inner"
-                />
+            <div className="flex flex-col gap-3">
+                {/* Kampung Buttons */}
+                {uniqueKampungs.length > 0 && (
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <span className="text-sm font-semibold mr-2 text-muted-foreground">Filter Kampung:</span>
+                        <Button
+                            variant={filterKampung === null ? "default" : "outline"}
+                            size="sm"
+                            className="h-8 rounded-full"
+                            onClick={() => setFilterKampung(null)}
+                        >
+                            <X size={14} className="mr-1" /> Semua
+                        </Button>
+                        {uniqueKampungs.map(k => (
+                            <Button
+                                key={String(k)}
+                                variant={filterKampung === k ? "default" : "outline"}
+                                size="sm"
+                                className="h-8 rounded-full"
+                                onClick={() => setFilterKampung(String(k))}
+                            >
+                                {String(k)}
+                            </Button>
+                        ))}
+                    </div>
+                )}
+
+                <div className="glass-card p-4 rounded-xl flex items-center gap-4">
+                    <Input
+                        placeholder="Cari Nama, NOP, Blok, Persil, atau Nama Asal..."
+                        icon={Search}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-background/50 border-none shadow-inner"
+                    />
+                </div>
             </div>
 
 
