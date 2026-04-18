@@ -526,7 +526,7 @@ export default function DataWPPage() {
                     )
                 `)
                 .order('group_id', { ascending: true, nullsFirst: false }) // Sort by Group ID first
-                .order('name', { ascending: true }); // Then by Name
+                .order('created_at', { ascending: true }); // Then by Insert Order (Excel order)
 
             if (error) throw error;
 
@@ -806,7 +806,7 @@ export default function DataWPPage() {
                         <div className="text-left">
                             <div className="flex items-center gap-2">
                                 <Users size={16} className="text-blue-600 hidden sm:block" />
-                                <p className="font-semibold">{primaryWp.name} dkk</p>
+                                <p className="font-semibold">{primaryWp.name}</p>
                                 <Badge variant="outline" className="text-[10px] h-5 px-1 bg-blue-50 text-blue-700 border-blue-200">
                                     Grp {displayGroupId}
                                 </Badge>
