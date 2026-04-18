@@ -995,7 +995,7 @@ export default function DataWPPage() {
                     <div className="flex flex-wrap gap-2 items-center">
                         <span className="text-sm font-semibold mr-2 text-muted-foreground">Filter Kampung:</span>
                         <Button
-                            variant={filterKampung === null ? "default" : "outline"}
+                            variant={filterKampung === null ? "primary" : "outline"}
                             size="sm"
                             className="h-8 rounded-full"
                             onClick={() => setFilterKampung(null)}
@@ -1005,7 +1005,7 @@ export default function DataWPPage() {
                         {uniqueKampungs.map(k => (
                             <Button
                                 key={String(k)}
-                                variant={filterKampung === k ? "default" : "outline"}
+                                variant={filterKampung === k ? "primary" : "outline"}
                                 size="sm"
                                 className="h-8 rounded-full"
                                 onClick={() => setFilterKampung(String(k))}
