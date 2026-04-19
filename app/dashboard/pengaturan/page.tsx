@@ -48,16 +48,9 @@ export default function PengaturanPage() {
     const [deadlineLoading, setDeadlineLoading] = useState(false)
 
     useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const res = await fetch('/api/settings')
-                const data = await res.json()
-                if (data.deadline) setDeadline(data.deadline)
-            } catch (err) {
-                console.error("Failed to load settings", err)
-            }
-        }
-        fetchSettings()
+        // Load deadline from localStorage
+        const stored = localStorage.getItem('pbb_deadline')
+        if (stored) setDeadline(stored)
     }, [])
 
     const handleSaveDeadline = async (e: React.FormEvent) => {
@@ -66,18 +59,10 @@ export default function PengaturanPage() {
         setDeadlineMsg({ type: "", text: "" })
 
         try {
-            const res = await fetch('/api/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deadline })
-            })
-            if (res.ok) {
-                setDeadlineMsg({ type: "success", text: "Jatuh tempo berhasil disimpan!" })
-            } else {
-                setDeadlineMsg({ type: "error", text: "Gagal menyimpan pengaturan." })
-            }
+            localStorage.setItem('pbb_deadline', deadline)
+            setDeadlineMsg({ type: "success", text: "Jatuh tempo berhasil disimpan di perangkat ini!" })
         } catch (err) {
-            setDeadlineMsg({ type: "error", text: "Terjadi kesalahan sistem." })
+            setDeadlineMsg({ type: "error", text: "Terjadi kesalahan sistem saat menyimpan." })
         } finally {
             setDeadlineLoading(false)
         }
