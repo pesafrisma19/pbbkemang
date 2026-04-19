@@ -7,7 +7,7 @@ import { SimpleAccordion } from "@/components/ui/Accordion"
 import { Badge } from "@/components/ui/Badge"
 import { Toggle } from "@/components/ui/Toggle"
 import { Button } from "@/components/ui/Button"
-import { Search, Loader2, User, CalendarDays, Users, Phone } from "lucide-react"
+import { Search, Loader2, User, CalendarDays, Users, Phone, X } from "lucide-react"
 
 // Grouped Structure
 type TaxObject = {
@@ -42,6 +42,7 @@ export default function PembayaranPage() {
     const [allData, setAllData] = useState<WPGroup[]>([]) // Store all data
     const [isLoading, setIsLoading] = useState(true)
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('unpaid')
+    const [filterKampung, setFilterKampung] = useState<string | null>(null)
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1)
@@ -180,6 +181,15 @@ export default function PembayaranPage() {
         return stats
     }, [allData])
 
+    // Unique Kampungs
+    const uniqueKampungs = useMemo(() => {
+        const set = new Set<string>()
+        allData.forEach(d => {
+            if (d.address) set.add(d.address.trim())
+        })
+        return Array.from(set).sort()
+    }, [allData])
+
     const filteredResults = useMemo(() => {
         const lowerSearch = searchTerm.toLowerCase().trim()
         const cleanSearch = searchTerm.replace(/\D/g, '')
@@ -204,7 +214,12 @@ export default function PembayaranPage() {
             return true;
         }
 
-        const filteredCitizens = allData.filter(g => checkSearch(g) && checkStatus(g))
+        const checkKampung = (g: WPGroup) => {
+            if (!filterKampung) return true;
+            return g.address === filterKampung;
+        }
+
+        const filteredCitizens = allData.filter(g => checkSearch(g) && checkStatus(g) && checkKampung(g))
 
         const groupedData: any[] = [];
         const groupsMap = new Map<string, WPGroup[]>();
@@ -247,7 +262,7 @@ export default function PembayaranPage() {
     // Reset page on search or filter change
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchTerm, filterStatus])
+    }, [searchTerm, filterStatus, filterKampung])
 
     // Helper to format date
     const formatDate = (dateString: string | null) => {
@@ -437,6 +452,32 @@ export default function PembayaranPage() {
             </div>
 
             <div className="sticky top-0 z-30 pt-2 pb-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 space-y-3">
+                {/* Kampung Buttons */}
+                {uniqueKampungs.length > 0 && (
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <span className="text-sm font-semibold mr-2 text-muted-foreground">Filter Kampung:</span>
+                        <Button
+                            variant={filterKampung === null ? "primary" : "outline"}
+                            size="sm"
+                            className="h-8 rounded-full"
+                            onClick={() => setFilterKampung(null)}
+                        >
+                            <X size={14} className="mr-1" /> Semua
+                        </Button>
+                        {uniqueKampungs.map(k => (
+                            <Button
+                                key={String(k)}
+                                variant={filterKampung === k ? "primary" : "outline"}
+                                size="sm"
+                                className="h-8 rounded-full"
+                                onClick={() => setFilterKampung(String(k))}
+                            >
+                                {String(k)}
+                            </Button>
+                        ))}
+                    </div>
+                )}
+                
                 {/* Search Bar */}
                 <Input
                     placeholder="Scan NOP atau Ketik Nama..."
