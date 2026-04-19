@@ -359,34 +359,45 @@ export default function DashboardPage() {
             </div>
 
             {/* ---> 3. KAMPUNG KHUSUS <--- */}
-            <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl space-y-6">
-                <div>
-                    <h3 className="text-lg font-bold flex items-center gap-2 text-foreground mb-1">
-                        <Filter className="text-slate-600 bg-slate-200 p-1 rounded-md" size={24} />
-                        Rincian Detail Menyeluruh Per-Kampung
-                    </h3>
-                    <p className="text-sm text-muted-foreground">Pilih kampung dari kaliber di bawah ini untuk mengintip performa spesifiknya secara lengkap.</p>
-                </div>
-                
-                <select 
-                    value={selectedKampung} 
-                    onChange={e => setSelectedKampung(e.target.value)}
-                    className="w-full md:w-fit px-4 py-3 border border-slate-300 rounded-lg bg-white font-bold text-slate-800 shadow-sm focus:ring focus:ring-blue-200 outline-none"
-                >
-                    <option value="Semua">-- Pilih Kampung Disini --</option>
-                    {uniqueKampungs.map(k => (
-                        <option key={k} value={k}>Area Kampung: {k}</option>
-                    ))}
-                </select>
-
-                {selectedKampung !== "Semua" ? (
-                    <div className="pt-4 border-t border-slate-200 animate-in fade-in zoom-in-95 duration-300">
-                        <StatsPanel stats={statsData.kampung} prefixTitle={`(${selectedKampung})`} />
-                    </div>
-                ) : (
-                    <div className="pt-2 text-sm text-slate-500 italic">Silakan pilih kampung untuk memunculkan panel analisisnya.</div>
-                )}
-            </div>
+            <Card className="bg-card border-2 border-muted overflow-hidden">
+                <CardHeader className="bg-muted/20 border-b pb-4">
+                    <CardTitle className="text-lg font-bold flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <Filter className="text-primary bg-primary/10 p-1.5 rounded-md" size={26} />
+                            Rincian Data Per-Kampung
+                        </div>
+                        <div className="relative w-full md:w-72">
+                            <select 
+                                value={selectedKampung} 
+                                onChange={e => setSelectedKampung(e.target.value)}
+                                className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none cursor-pointer transition-all shadow-sm pr-10"
+                            >
+                                <option value="Semua">-- Pilih Kampung Disini --</option>
+                                {uniqueKampungs.map(k => (
+                                    <option key={k} value={k}>Area: {k}</option>
+                                ))}
+                            </select>
+                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </div>
+                        </div>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-8">
+                    {selectedKampung !== "Semua" ? (
+                        <div className="animate-in fade-in zoom-in-95 duration-300">
+                            <StatsPanel stats={statsData.kampung} prefixTitle={`(${selectedKampung})`} />
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in">
+                            <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                                <Filter size={28} className="text-muted-foreground/50" />
+                            </div>
+                            <p className="text-muted-foreground font-medium text-sm">Gunakan menu di sudut kanan atas untuk melihat statistik terpisah per RT/Kampung.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* ---> 4. RECENT PAYMENTS <--- */}
             <div>
