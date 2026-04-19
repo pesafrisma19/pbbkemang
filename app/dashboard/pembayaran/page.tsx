@@ -249,7 +249,7 @@ export default function PembayaranPage() {
         });
 
         return groupedData;
-    }, [allData, searchTerm, filterStatus])
+    }, [allData, searchTerm, filterStatus, filterKampung])
 
     // Pagination Logic
     const totalPages = Math.ceil(filteredResults.length / itemsPerPage)
