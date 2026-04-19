@@ -198,28 +198,44 @@ export default function Home() {
         const groupsMap = new Map<string, any[]>()
         processedAll.forEach(p => {
           if (p.group_id) {
-            if (!groupsMap.has(p.group_id)) groupsMap.set(p.group_id, [])
-            groupsMap.get(p.group_id)?.push(p)
+            const groupKey = `${p.group_id}-${p.address}`
+            if (!groupsMap.has(groupKey)) groupsMap.set(groupKey, [])
+            groupsMap.get(groupKey)?.push(p)
           }
         })
 
         // Sort Groups by ID (assuming numeric usually, but stored as string sometimes?)
         // Let's try to parse int for sorting
         const sortedGroupIds = Array.from(groupsMap.keys()).sort((a, b) => {
-          const numA = parseInt(a) || 999999
-          const numB = parseInt(b) || 999999
+          const splitA = a.split('-');
+          const splitB = b.split('-');
+          const kampA = splitA.slice(1).join('-') || '';
+          const kampB = splitB.slice(1).join('-') || '';
+          
+          if (kampA !== kampB) {
+              return kampA.localeCompare(kampB);
+          }
+          const numA = parseInt(splitA[0]) || 999999
+          const numB = parseInt(splitB[0]) || 999999
           return numA - numB
         })
 
         sortedGroupIds.forEach(gid => {
           const members = groupsMap.get(gid)
+
+          // Filter: Jangan tampilkan keluarga dari kampung lain yang terbawa hanya gara-gara nomor grupnya sama!
+          const hasMatchInThisSpecificGroup = members?.some(m => m.isMatch)
+          if (!hasMatchInThisSpecificGroup) return;
+
           // Sort members: check if match query -> top, else unpaid count
           members?.sort((a, b) => {
             if (a.isMatch && !b.isMatch) return -1
             if (!a.isMatch && b.isMatch) return 1
             return b.unpaidCount - a.unpaidCount
           })
-          finalStructure.push({ type: 'group', id: gid, members })
+          const displayGroupId = gid.split('-')[0];
+          const kampung = gid.split('-').slice(1).join('-');
+          finalStructure.push({ type: 'group', id: gid, members, displayGroupId, kampung })
         })
 
         // B. Handle Orphans (Singles)
@@ -374,7 +390,8 @@ export default function Home() {
                         <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 px-4 py-3 rounded-xl border border-blue-100 dark:border-blue-800">
                           <div className="flex items-center gap-2">
                             <Users size={18} className="text-blue-600 dark:text-blue-400" />
-                            <span className="font-bold text-blue-800 dark:text-blue-300">Group {item.id}</span>
+                            <span className="font-bold text-blue-800 dark:text-blue-300">Group {item.displayGroupId}</span>
+                            <span className="text-sm font-medium text-blue-700/80 dark:text-blue-300/80 hidden sm:inline-block"> • {item.kampung}</span>
                             <Badge variant="outline" className="ml-2 bg-blue-100/50 text-blue-700 border-blue-200">
                               {item.members.length} Anggota
                             </Badge>
