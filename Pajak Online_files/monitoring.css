@@ -1,0 +1,70 @@
+#div-search td{
+	background: transparent;
+}
+
+.monitoring-content{
+	margin:auto;
+	width:100%;
+	border:thin solid #CCC;
+	/*-moz-box-shadow: 0 0 2px #888;
+	-webkit-box-shadow: 0 0 2px#888;
+	box-shadow: 0 0 2px #888;*/
+	text-align:center;
+	min-height:20px;
+	padding-bottom:30px;
+}
+
+#next-page{
+	background:url(../../../image/icon/navigation-000-button.png) no-repeat;
+	background-position:center left ;	
+	padding-left:20px;
+	cursor:pointer;
+}
+#prev-page{
+	background:url(../../../image/icon/navigation-180-button.png) no-repeat;
+	background-position:center left ;	
+	padding-left:20px;
+	cursor:pointer;
+}
+
+#frame-tbl-monitoring {
+	overflow:scroll;
+	height:320px;
+}
+
+#frame-tbl-monitoring td{
+	background-color:#fff;
+	font-size:0.7em;
+}
+
+#frame-tbl-monitoring th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+#frame-tbl-monitoring thead th[rowspan] {
+	z-index: 3; /* Ensure higher stacking order for rowspan headers */
+}
+
+#frame-tbl-monitoring th[colspan] {
+	position: sticky;
+	z-index: 3; /* Ensure higher stacking order for colspan headers */
+}
+
+#frame-tbl-monitoring thead tr:first-child th {
+	top: 0;
+}
+
+#frame-tbl-monitoring thead tr:nth-child(2) th {
+	top: 26px; /* Adjust based on the height of your first row */
+}
+
+.paging-tbl-class {
+	padding:8px;
+	float:right;
+}
+
+select {
+	padding: 4px;
+}

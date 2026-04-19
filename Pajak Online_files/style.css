@@ -1,0 +1,673 @@
+/*========================*/
+/*                        */
+/*    V-Elektrik Style    */
+/*                        */
+/*========================*/
+
+/*----------*/
+/* All page */
+/*----------*/
+
+/* Override all margin to zero */
+* {
+	margin	  	 						: 0;
+}
+
+/* Change font */
+body, div, td, th, option, select, input, textarea {
+	font-family							: tahoma;
+	font-size							: 10pt;
+	color								: black;
+}
+
+/* Change background page */
+body {
+	background						: #cccccc url(background.png) repeat;
+}
+
+/*--------------------*/
+/* Element: Hyperlink */
+/*--------------------*/
+
+/* Hyperlink */
+a {
+	color								: #2B80EC;
+}
+
+/* Hyperlink hovered */
+a:hover {
+	text-decoration						: none;
+}
+
+/* Hyperlinked image */
+a img {
+	border								: none;
+}
+
+/*----------------*/
+/* Element: Title */
+/*----------------*/
+
+/* Title */
+h1, h2, h3, h4, h5, h6 {
+	font-family							: georgia;
+	border-bottom						: solid 2px #777777;
+	width								: 640px;
+	padding-bottom						: 1px;
+}
+
+/*----------------*/
+/* Element: Table */
+/*----------------*/
+
+/* Table header */
+th {
+	border								: solid 1px #1a4005;
+	background-color					: #B3C8FF;
+}
+
+/* Table cell */
+td {
+	background-color					: #ffffff;
+}
+
+/* Transparent table (Preferrably for form) */
+.transparent th, .transparent td {
+	background-color					: transparent;
+	border								: none;
+}
+
+/* Custom class for table header */
+.tableTitle td {
+	font-size							: 10pt;
+	font-weight							: bold;
+	height								: 50px;
+	color								: #fcfcfc;
+	background-color					: #324c73;
+}
+
+/* Custom class for table cell */
+.tableSubTitle td {
+	font-size							: 10pt;
+	color								: #fcfcfc;
+	background-color					: #324c73;
+}
+
+/*----------------------*/
+/* Element: Div spacing */
+/*----------------------*/
+
+/* Div spacing 5 pixel */
+.spacer5 {
+	height								: 5px;
+}
+
+/* Div spacing 10 pixel */
+.spacer10 {
+	height								: 10px;
+}
+
+/* Div spacing 20 pixel */
+.spacer20 {
+	height								: 20px;
+}
+
+/* Div spacing 30 pixel */
+.spacer30 {
+	height								: 30px;
+}
+
+/* Div spacing 50 pixel */
+.spacer50 {
+	height								: 50px;
+}
+
+/*------------*/
+/* Login page */
+/*------------*/
+
+/* Login page: Body */
+.login-page {
+ 	text-align							: center;
+}
+
+/* Login page: Header */
+.login-page #header {
+	padding-top							: 30px;
+}
+
+/* login page: Content */
+.login-page #content {
+}
+
+/* Login page: Box */
+#login-form {
+	border								: 1px solid #999999;
+	padding								: 2% 2% 2% 2%;
+	margin								: 50 auto 0;
+	width								: 240px;
+	background							: #FFFFFF;
+	color								: #666666;
+	-moz-border-radius					: 5px 5px 5px 5px;
+	-webkit-border-radius				: 5px 5px 5px 5px;
+	-moz-box-shadow						: 0 1px #EEEEEE, 0 1px #FFFFFF inset;
+	-webkit-box-shadow					: 0 1px #EEEEEE, 0 1px #FFFFFF inset;
+	box-shadow							: 0 1px #EEEEEE, 0 1px #FFFFFF inset; 
+}
+
+/* Login page: Captcha image */
+#captcha-image {
+	border								: solid #cccccc 2px;
+}
+
+/*-----------*/
+/* Main page */
+/*-----------*/
+
+/*
+Style navigation:
+
+body
+|
++---+> #container
+|   |
+|   +---+> #main .clearFix
+|       |
+|       +----+> #header
+|       |    |
+|       |    +----+> #user-menu
+|       |    |
+|       |    +----+> #logo
+|       |
+|       +----+> #menu
+|       |    |
+|       |    +----+> #app
+|       |    |
+|       |    +----+> #module
+|       |    |
+|       |    +----+> #app-change
+|       |    |    |
+|       |    |    +----+> #app-link
+|       |    |
+|       |    +----+> #module-change
+|       |         |
+|       |         +----+> #module-link
+|       |
+|       +----+> #content
+|       |
+|       +----+> #management (FOR ADMIN)
+|
++---+> #footer
+
+*/
+
+/*-----------------*/
+/* Main: Container */
+/*-----------------*/
+
+/* Height to 100% (For compatibility to sticky footer) */
+html, body, #container {
+	height								: 100%;
+}
+
+/* Height to 100% (For compatibility to sticky footer) */
+body > #container {
+	height								: auto;
+	min-height							: 100%;
+}
+
+/*------------*/
+/* Main: Main */
+/*------------*/
+
+/* Main style */
+#main {
+	padding-bottom						: 50px;
+}
+
+/*-------------------------------------------------*/
+/* Main: Clear Fix (Compatibility to sticky footer */
+/*-------------------------------------------------*/
+
+/* After clear fix rendering */
+.clearfix:after {
+	content								: ".";
+	display								: block;
+	height								: 0;
+	clear								: both;
+	visibility							: hidden;
+}
+
+/* Display clear fix */
+.clearfix  {
+	display								: inline-block;
+}
+
+/* Hides from IE-mac */
+* html .clearfix {
+	height								: 1%;
+}
+
+/* Hides from IE-mac */
+.clearfix {
+	display								: block;
+}
+
+/*--------------*/
+/* Main: Header */
+/*--------------*/
+
+/* Header */
+#header {
+}
+
+/* User menu */
+#header #user-menu {
+	padding-top							: 27px;
+	float								: right;
+	padding-right						: 20px;
+}
+
+/* Small logo */
+#header #logo {
+	width								: 20%;
+}
+
+/*------------*/
+/* Main: Menu */
+/*------------*/
+
+/* Menu */
+#menu {
+	background							: url("images/option.png") repeat-x scroll 0 0 #6F8DDD;		
+	padding								: 10px 30px;
+}
+
+/* Application, and application change */
+#app, #app-change {
+	font-size							: 12pt;
+	float								: left;
+	width								: 40%;
+	color								: #ffffff;
+}
+
+/* Module, and module change */
+#module, #module-change {
+	font-size							: 12pt;
+	color								: #ffffff;
+}
+
+/* Application link, and module link */
+#app-link, #module-link {
+	font-size							: 10pt;
+	color								: #CDE3FF;
+}
+
+/*---------------*/
+/* Main: SubMenu */
+/*---------------*/
+
+/* SubMenu */
+#subMenu {
+	border								: 1px solid #030D8A;
+	background-color					: #B3C8FF;
+	padding								: 5px;
+	margin-left							: -10px;
+}
+
+/* SubMenu link */
+#subMenu a {
+	color								: #000000;
+	padding								: 5px 10px;
+	text-align							: center;
+	text-decoration						: none;
+}
+
+/* SubMenu link hovered */
+#subMenu a:hover {
+	color								: #FFFFFF;
+	background-color					: #6F8DDD;
+}
+
+/*---------------*/
+/* Main: Content */
+/*---------------*/
+
+/* Style content */
+#container #content {
+	padding-left						: 10px;
+}
+
+/*---------------*/
+/* Main: Management */
+/*---------------*/
+
+/* Style management */
+#container #management {
+	padding-left						: 10px;
+}
+
+/*--------------------*/
+/* Main: User profile */
+/*--------------------*/
+
+/* Style content */
+#container #user-profile {
+	padding-left						: 10px;
+}
+
+/*--------------*/
+/* Main: Footer */
+/*--------------*/
+
+/* Style for footer */
+#footer {
+	position							: fixed;
+	left								: 0px;
+	bottom								: 10px;
+	margin-top							: -50px; /* negative value of footer height */
+	height								: 30px;
+	padding								: 7px 0px;
+	clear								: both;
+	text-align							: center;
+	background							: url("images/option.png") repeat-x scroll 0 0 #ebebeb;
+	margin-bottom						: -10px;
+	width								: 100%;
+}
+
+/*---------------------*/
+/* Others: Div message */
+/*---------------------*/
+
+/* Showing error message (Preferrably div element) */
+.error {
+	padding								: 3px;
+	color								: red;
+	font-weight							: bolder;
+}
+
+/* Showing confirmation message (Preferrably div element) */
+.confirmation {
+	padding								: 3px;
+	color								: blue;
+	font-weight							: bolder;
+}
+
+/*---------------*/
+/* Others: Image */
+/*---------------*/
+
+/* Image in administration menu */
+.imageHrefIcon {
+	padding								: 5px;
+}
+
+/* Image in administration menu (hovered) */
+.imageHrefIcon:hover {
+	background-color					: #cccccc;
+}
+
+/* Image option menu */
+.imageHref {
+}
+
+/* Image option menu (hovered) */
+.imageHref:hover {
+}
+
+/*---------------*/
+/* Others: Title */
+/*---------------*/
+
+/* Title */
+.title {
+	float								: left;
+	clear								: left;
+	font-size							: 14pt;
+	width								: 500px;
+}
+
+/* Subtitle */
+.subTitle {
+	font-size							: 12pt;
+	border-bottom						: solid 2px #000000;
+	width								: 640px;
+}
+
+/* Sub subtitle */
+.subSubTitle {
+	font-size							: 12pt;
+	font-weight							: bold;
+}
+
+/*---------------*/
+/* Others: Display */
+/*---------------*/
+
+/* Display hide */
+.hide {
+	visibility							: hidden;
+	display								: none;
+}
+
+/* Display filter */
+.filter {
+	border								: RGB(75,172,198) solid 1px; 
+	padding								: 10px; 
+	background-color					: RGB(218, 238, 243); 
+	margin-top							: 2px;
+	margin-bottom						: 2px;
+}
+
+/*-------------*/
+/* Recycle Bin */
+/* --Backup--- */
+/*-------------*/
+
+/*
+.submodule {
+	background							: #993333;
+	padding								: 10px;
+}
+
+#tabs {
+	width								: 400px;
+}
+
+.popup {
+	border								: solid RGB(172, 75, 198) 2px;
+	background-color					: #f3f3f3;
+	visibility							: hidden;
+	position							: absolute;
+	top									: 0;
+	left								: 0;
+	padding								: 4px;
+}
+
+*/
+#dialog {position:absolute; width:425px; padding:10px; z-index:200; background:#fff}
+#dialog-header {display:block; position:relative; width:411px; padding:3px 6px 7px; height:14px; font-size:14px; font-weight:bold}
+#dialog-title {float:left}
+#dialog-close {float:right; cursor:pointer; margin:3px 3px 0 0; height:11px; width:11px; background:url(images/dialog_close.gif) no-repeat}
+#dialog-content {display:block; height:160px; padding:6px; color:#666666; font-size:13px}
+#dialog-mask {position:absolute; top:0; left:0; min-height:100%; width:100%; background:#FFF; opacity:.75; filter:alpha(opacity=75); z-index:100}
+#dialog .error {background:#fff url(images/error_bg.jpg) bottom right no-repeat; border:1px solid #924949; border-top:none}
+#dialog .errorheader {background:url(images/error_header.gif) repeat-x; color:#6f2c2c; border:1px solid #924949; border-bottom:none}
+#dialog .warning {background:#fff url(images/warning_bg.jpg) bottom right no-repeat; border:1px solid #c5a524; border-top:none}
+#dialog .warningheader {background:url(images/warning_header.gif) repeat-x; color:#957c17; border:1px solid #c5a524; border-bottom:none}
+#dialog .success {background:#fff url(images/success_bg.jpg) bottom right no-repeat; border:1px solid #60a174; border-top:none}
+#dialog .successheader {background:url(images/success_header.gif) repeat-x; color:#3c7f51; border:1px solid #60a174; border-bottom:none}
+#dialog .prompt {background:#fff url(images/prompt_bg.jpg) bottom right no-repeat; border:1px solid #4f6d81; border-top:none}
+#dialog .promptheader {background:url(images/prompt_header.gif) repeat-x; color:#355468; border:1px solid #4f6d81; border-bottom:none}
+
+#pdf-menu{
+	background:url(../../../image/icon/document-pdf-text.png) no-repeat;
+	background-position:center left ;	
+	padding-left:20px;
+}
+
+#navigator-right{
+	background:url(../../../image/icon/navigation-000-button.png) no-repeat;
+	background-position:center left ;	
+	padding-left:20px;
+	cursor:pointer;
+}
+#navigator-left{
+	background:url(../../../image/icon/navigation-180-button.png) no-repeat;
+	background-position:center left ;	
+	padding-left:20px;
+	cursor:pointer;
+}
+#notaris-main-menu {
+	width : 180px;
+	margin-top: 20px;
+	float:left;
+	display:block;
+}
+#notaris-main-menu a {
+	text-decoration:none;
+	color:#666;	vertical-align:middle;
+}
+#notaris-main-menu a:active {
+	background-color:#fdcf87;
+	color:#494949;
+}
+#notaris-main-menu #selected {
+	background-color:#fdcf87;
+	color:#494949;
+}
+#notaris-main-menu li:hover {
+	background-color:#fdcf87;
+	color:#494949;
+}
+#notaris-main-menu li {
+	background-color:#fef1dd;
+	height:22px;
+	list-style:none;
+	overflow:hidden;
+	margin-left:-20px;
+	padding-left:5px;
+	padding-top:3px;
+	margin-top:1px;
+}
+
+#notaris-main-content {
+	margin-right: 20px;
+	margin-top: 21px;
+	background-color:#fdcf87;
+	padding:5px 5px 5px 5px;
+	overflow:hidden;
+}
+#notaris-main-content-inner {
+	background-color:#fff;
+	padding:5px 5px 5px 5px;
+}
+#notaris-main-content-footer {
+	background-color:#ffebcc;
+	height:20px;
+	padding:5px 5px 5px 5px;
+}
+/*.tdheader {
+	text-align:center;
+	font-weight:bold;
+	background-color:#bababa;
+}
+.tdbody1 {
+	background-color:#dedede;
+}
+.tdbody2 {
+	background-color:#d2d2d2;
+}*/
+.tdbodyNew {
+	background-color:#fdcf87;
+}
+
+
+
+.consol-main-content {
+	padding:5px 5px 5px 5px;
+	overflow:hidden;
+	
+}
+.consol-main-content-inner {
+	padding:5px 5px 5px 5px;
+}
+.consol-main-content-footer {
+	height:20px;
+	padding:5px 5px 5px 5px;
+}
+
+.tdheader {
+	text-align:center;
+	font-weight:bold;
+	background-color:#bababa;
+}
+.tdbody1 {
+	background-color:#dedede;
+}
+.tdbody2 {
+	background-color:#d2d2d2;
+}
+#navigator-right{
+	background:url(../../image/icon/navigation-000-button.png) no-repeat;
+	background-position:center left ;	
+	padding-left:20px;
+	cursor:pointer;
+}
+#navigator-left{
+	background:url(../../image/icon/navigation-180-button.png) no-repeat;
+	background-position:center left ;	
+	padding-left:20px;
+	cursor:pointer;
+}
+#load-mask, #load-content{
+    display:none;
+    position:fixed;
+    height:100%;
+    width:100%;
+    top:0;
+    left:0;
+}
+#load-mask{
+    background-color:#000000;
+    filter:alpha(opacity=70);
+    opacity:0.7;
+    z-index:1;
+}
+#load-content{
+    z-index: 2;
+}
+
+#closeddate{cursor: pointer;}
+#loader {
+    margin-right: auto;
+    margin-left: auto; 
+    background-color: #ffffff;
+    width: 100px;
+    height: 100px;
+    margin-top: 200px;
+}
+
+
+input {
+/*    border:1px solid #dadada;
+    border-radius:2px;*/
+    font-size:12px;
+    padding:4px; 
+}
+
+.tbl-rekomen{
+        background-color:#A0ACF2;
+}
+
+input:focus { 
+    outline:none;
+/*    border-color:#9ecaed;
+    box-shadow:0 0 10px #9ecaed;*/
+}
+
+#main-content {
+/*    background-color: #FFC975;*/
+    background-color: #FFFFFF;
+    width: 800px;
+}

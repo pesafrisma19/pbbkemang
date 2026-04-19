@@ -341,7 +341,17 @@ export default function DataWPPage() {
 
                     const name = String(nameRaw).trim()
                     const address = String(addressRaw).trim()
-                    const nominal = Number(taxRaw) || 0
+                    
+                    let nominal = 0;
+                    if (typeof taxRaw === 'number') {
+                        nominal = taxRaw;
+                    } else if (typeof taxRaw === 'string') {
+                        // Hapus "Rp", spasi, dan titik (ribuan), ubah koma jadi titik (desimal)
+                        const cleanTax = taxRaw.replace(/rp/gi, '').replace(/\./g, '').replace(/\s/g, '').replace(/,/g, '.');
+                        nominal = Number(cleanTax) || 0;
+                    } else {
+                        nominal = Number(taxRaw) || 0;
+                    }
 
                     // NOP Handling: 
                     let nopClean = String(nopRaw).trim();
