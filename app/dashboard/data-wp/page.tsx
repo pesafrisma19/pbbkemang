@@ -894,7 +894,7 @@ export default function DataWPPage() {
                                                         {asset.blok && <span>• Blok {asset.blok}</span>}
                                                         {asset.persil && <span>• Persil {asset.persil}</span>}
                                                     </p>
-                                                    {asset.original_name && <p className="text-[10px] text-muted-foreground italic mt-0.5">Ex: {asset.original_name}</p>}
+                                                    {asset.original_name && <p className="text-[10px] font-semibold italic mt-0.5">Ex: {asset.original_name}</p>}
                                                 </div>
                                                 <div className="flex items-center justify-between sm:justify-end gap-2 flex-1">
                                                     <span className="text-xs font-semibold">Rp {asset.tax.toLocaleString('id-ID')}</span>
@@ -956,7 +956,7 @@ export default function DataWPPage() {
                                             {asset.blok && <span>• Blok {asset.blok}</span>}
                                             {asset.persil && <span>• Persil {asset.persil}</span>}
                                         </p>
-                                        {asset.original_name && <p className="text-[10px] text-muted-foreground italic mt-0.5">Ex: {asset.original_name}</p>}
+                                        {asset.original_name && <p className="text-[10px] font-semibold italic mt-0.5">Ex: {asset.original_name}</p>}
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-sm font-semibold">Rp {asset.tax.toLocaleString('id-ID')}</span>

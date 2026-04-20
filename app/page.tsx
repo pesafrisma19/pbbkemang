@@ -630,7 +630,7 @@ function CitizenCard({ citizen, isExpanded, onToggle, highlight }: any) {
                 <div className="flex flex-wrap gap-1">
                   {asset.blok && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground">Blok {asset.blok}</span>}
                   {asset.persil && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground">Persil {asset.persil}</span>}
-                  {asset.original_name && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground italic">Ex: {asset.original_name}</span>}
+                  {asset.original_name && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 font-semibold italic">Ex: {asset.original_name}</span>}
                 </div>
 
                 {/* Shared Warning */}

@@ -361,7 +361,7 @@ export default function PembayaranPage() {
                                                         {asset.blok && <span>• Blok {asset.blok}</span>}
                                                         {asset.persil && <span>• Persil {asset.persil}</span>}
                                                     </p>
-                                                    {asset.original_name && <p className="text-[10px] text-muted-foreground italic mt-0.5">Ex: {asset.original_name}</p>}
+                                                    {asset.original_name && <p className="text-[10px] font-semibold italic mt-0.5">Ex: {asset.original_name}</p>}
                                                 </div>
                                                 <div className="flex items-center justify-between sm:justify-end gap-4 flex-1">
                                                     <div className="text-right min-w-[90px]">
