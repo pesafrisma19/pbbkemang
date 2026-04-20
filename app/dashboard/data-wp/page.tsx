@@ -105,18 +105,49 @@ export default function DataWPPage() {
     // Extract unique kampungs dynamically
     const uniqueKampungs = Array.from(new Set(localData.map(wp => wp.address))).filter(Boolean).sort()
 
-    // 1. Filter By Kampung & Search
+    // 1. Tentukan keluarga mana saja yang memiliki minimal 1 anggota yang cocok dengan pencarian
+    const lowerSearch = searchTerm.toLowerCase().trim()
+    const cleanSearch = searchTerm.replace(/\D/g, '')
+    const matchedGroupKeys = new Set<string>()
+
+    if (lowerSearch) {
+        localData.forEach(wp => {
+            const matchSearch = wp.name.toLowerCase().includes(lowerSearch) ||
+                (wp.group_id && wp.group_id.toLowerCase().includes(lowerSearch)) || // Search Group
+                wp.assets.some(a =>
+                    (cleanSearch && a.nop.includes(cleanSearch)) ||
+                    (a.original_name && a.original_name.toLowerCase().includes(lowerSearch)) ||
+                    (a.persil && a.persil.toLowerCase().includes(lowerSearch)) ||
+                    (a.blok && a.blok.toLowerCase().includes(lowerSearch))
+                )
+            
+            if (matchSearch && wp.group_id) {
+                matchedGroupKeys.add(`${wp.group_id}-${wp.address}`)
+            }
+        })
+    }
+
+    // 2. Saring data berdasarkan Kampung & Hasil Pencarian
     const filteredData = localData.filter(wp => {
         const matchKampung = filterKampung ? wp.address === filterKampung : true;
-        const matchSearch = wp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (wp.group_id && wp.group_id.toLowerCase().includes(searchTerm.toLowerCase())) || // Search Group
+        if (!matchKampung) return false;
+
+        if (!lowerSearch) return true; // Tidak ada pencarian, loloskan semua
+
+        // Jika dia anggota dari keluarga yang salah satu anggotanya kena search, otomatis lolos!
+        const groupKey = wp.group_id ? `${wp.group_id}-${wp.address}` : null;
+        if (groupKey && matchedGroupKeys.has(groupKey)) return true;
+
+        // Jika dia single/keluarga tidak punya grup, cek apakah dia sendiri cocok
+        const matchSearch = wp.name.toLowerCase().includes(lowerSearch) ||
+            (wp.group_id && wp.group_id.toLowerCase().includes(lowerSearch)) ||
             wp.assets.some(a =>
-                a.nop.includes(searchTerm) ||
-                (a.original_name && a.original_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (a.persil && a.persil.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (a.blok && a.blok.toLowerCase().includes(searchTerm.toLowerCase()))
+                (cleanSearch && a.nop.includes(cleanSearch)) ||
+                (a.original_name && a.original_name.toLowerCase().includes(lowerSearch)) ||
+                (a.persil && a.persil.toLowerCase().includes(lowerSearch)) ||
+                (a.blok && a.blok.toLowerCase().includes(lowerSearch))
             )
-        return matchKampung && matchSearch
+        return matchSearch;
     })
 
     // 2. Group Validated Data

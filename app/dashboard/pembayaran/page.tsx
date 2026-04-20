@@ -194,18 +194,23 @@ export default function PembayaranPage() {
         const lowerSearch = searchTerm.toLowerCase().trim()
         const cleanSearch = searchTerm.replace(/\D/g, '')
 
-        const checkSearch = (g: WPGroup) => {
-            if (!lowerSearch) return true;
-            if (g.name.toLowerCase().includes(lowerSearch)) return true
-            if (g.address?.toLowerCase().includes(lowerSearch)) return true
-            if (g.group_id && g.group_id.toLowerCase().includes(lowerSearch)) return true
+        const matchedGroupKeys = new Set<string>()
 
-            return g.tax_objects.some(obj => 
-                obj.nop.includes(cleanSearch) ||
-                (obj.original_name && obj.original_name.toLowerCase().includes(lowerSearch)) ||
-                (obj.persil && obj.persil.toLowerCase().includes(lowerSearch)) ||
-                (obj.blok && obj.blok.toLowerCase().includes(lowerSearch))
-            )
+        if (lowerSearch) {
+            allData.forEach(wp => {
+                const matchSearch = wp.name.toLowerCase().includes(lowerSearch) ||
+                    (wp.address?.toLowerCase().includes(lowerSearch)) ||
+                    (wp.group_id && wp.group_id.toLowerCase().includes(lowerSearch)) ||
+                    wp.tax_objects.some(obj =>
+                        (cleanSearch && obj.nop.includes(cleanSearch)) ||
+                        (obj.original_name && obj.original_name.toLowerCase().includes(lowerSearch)) ||
+                        (obj.persil && obj.persil.toLowerCase().includes(lowerSearch)) ||
+                        (obj.blok && obj.blok.toLowerCase().includes(lowerSearch))
+                    )
+                if (matchSearch && wp.group_id) {
+                    matchedGroupKeys.add(`${wp.group_id}-${wp.address}`)
+                }
+            })
         }
 
         const checkStatus = (g: WPGroup) => {
@@ -219,7 +224,27 @@ export default function PembayaranPage() {
             return g.address === filterKampung;
         }
 
-        const filteredCitizens = allData.filter(g => checkSearch(g) && checkStatus(g) && checkKampung(g))
+        const filteredCitizens = allData.filter(g => {
+            if (!checkKampung(g) || !checkStatus(g)) return false;
+
+            if (!lowerSearch) return true;
+
+            const groupKey = g.group_id ? `${g.group_id}-${g.address}` : null;
+            if (groupKey && matchedGroupKeys.has(groupKey)) return true;
+
+            // Jika dia single atau orphan, cek apakah dia cocok persis
+            const matchSearch = g.name.toLowerCase().includes(lowerSearch) ||
+                (g.address?.toLowerCase().includes(lowerSearch)) ||
+                (g.group_id && g.group_id.toLowerCase().includes(lowerSearch)) ||
+                g.tax_objects.some(obj =>
+                    (cleanSearch && obj.nop.includes(cleanSearch)) ||
+                    (obj.original_name && obj.original_name.toLowerCase().includes(lowerSearch)) ||
+                    (obj.persil && obj.persil.toLowerCase().includes(lowerSearch)) ||
+                    (obj.blok && obj.blok.toLowerCase().includes(lowerSearch))
+                )
+            
+            return matchSearch;
+        })
 
         const groupedData: any[] = [];
         const groupsMap = new Map<string, WPGroup[]>();
