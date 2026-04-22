@@ -309,7 +309,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-700 pb-16">
+        <div className="space-y-10 pb-16">
             <div>
                 <h2 className="text-3xl font-bold tracking-tight text-foreground">Dashboard & Laporan</h2>
                 <p className="text-muted-foreground">Ringkasan data real-time penerimaan PBB Desa Kemang.</p>
