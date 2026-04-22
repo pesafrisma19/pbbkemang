@@ -7,7 +7,8 @@ import { SimpleAccordion } from "@/components/ui/Accordion"
 import { Badge } from "@/components/ui/Badge"
 import { Toggle } from "@/components/ui/Toggle"
 import { Button } from "@/components/ui/Button"
-import { Search, Loader2, User, CalendarDays, Users, Phone, X } from "lucide-react"
+import { Modal } from "@/components/ui/Modal"
+import { Search, Loader2, User, CalendarDays, Users, Phone, X, AlertTriangle, CheckCircle } from "lucide-react"
 
 // Grouped Structure
 type TaxObject = {
@@ -43,6 +44,16 @@ export default function PembayaranPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('unpaid')
     const [filterKampung, setFilterKampung] = useState<string | null>(null)
+
+    // Confirmation Modal State
+    const [pendingToggle, setPendingToggle] = useState<{
+        objectId: string
+        currentStatus: boolean
+        citizenId: string
+        assetLocation: string
+        assetAmount: number
+        citizenName: string
+    } | null>(null)
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1)
@@ -125,8 +136,17 @@ export default function PembayaranPage() {
         fetchData()
     }, [fetchData])
 
-    // Handle Toggle Payment
-    const handleToggle = async (objectId: string, currentStatus: boolean, citizenId: string) => {
+    // Request Toggle (opens confirmation modal instead of toggling directly)
+    const requestToggle = (objectId: string, currentStatus: boolean, citizenId: string, assetLocation: string, assetAmount: number, citizenName: string) => {
+        setPendingToggle({ objectId, currentStatus, citizenId, assetLocation, assetAmount, citizenName })
+    }
+
+    // Execute Toggle Payment (called after user confirms)
+    const executeToggle = async () => {
+        if (!pendingToggle) return;
+        const { objectId, currentStatus, citizenId } = pendingToggle;
+        setPendingToggle(null); // Close modal immediately
+
         const isNowPaid = !currentStatus;
         const now = isNowPaid ? new Date().toISOString() : null;
 
@@ -376,7 +396,7 @@ export default function PembayaranPage() {
                                                     <div className="flex flex-col items-center gap-1 min-w-[70px]">
                                                         <Toggle
                                                             checked={asset.paid}
-                                                            onCheckedChange={() => handleToggle(asset.id, asset.paid, wp.citizen_id)}
+                                                            onCheckedChange={() => requestToggle(asset.id, asset.paid, wp.citizen_id, asset.location, asset.amount, wp.name)}
                                                         />
                                                         <span className={`text-[9px] font-bold ${asset.paid ? 'text-success' : 'text-muted-foreground'}`}>
                                                             {asset.paid ? 'LUNAS' : 'BELUM'}
@@ -395,7 +415,7 @@ export default function PembayaranPage() {
                 )
             }
         } else {
-            const wp = item.data as WPGroup;
+            const wp = item.wp as WPGroup;
             return {
                 id: wp.citizen_id,
                 title: (
@@ -451,7 +471,7 @@ export default function PembayaranPage() {
                                         <div className="flex flex-col items-center gap-1 min-w-[70px]">
                                             <Toggle
                                                 checked={asset.paid}
-                                                onCheckedChange={() => handleToggle(asset.id, asset.paid, wp.citizen_id)}
+                                                onCheckedChange={() => requestToggle(asset.id, asset.paid, wp.citizen_id, asset.location, asset.amount, wp.name)}
                                             />
                                             <span className={`text-[9px] font-bold ${asset.paid ? 'text-success' : 'text-muted-foreground'}`}>
                                                 {asset.paid ? 'LUNAS' : 'BELUM'}
@@ -580,6 +600,71 @@ export default function PembayaranPage() {
                     </div>
                 </div>
             )}
+
+            {/* Confirmation Modal */}
+            <Modal
+                isOpen={!!pendingToggle}
+                onClose={() => setPendingToggle(null)}
+                title={pendingToggle?.currentStatus ? 'Batalkan Pelunasan?' : 'Konfirmasi Pelunasan'}
+                footer={
+                    <>
+                        <Button variant="outline" onClick={() => setPendingToggle(null)}>
+                            Batal
+                        </Button>
+                        <Button
+                            variant={pendingToggle?.currentStatus ? 'destructive' : 'primary'}
+                            onClick={executeToggle}
+                        >
+                            {pendingToggle?.currentStatus ? 'Ya, Batalkan' : 'Ya, Lunaskan'}
+                        </Button>
+                    </>
+                }
+            >
+                {pendingToggle && (
+                    <div className="space-y-4">
+                        <div className={`flex items-start gap-3 p-4 rounded-xl border ${pendingToggle.currentStatus ? 'bg-destructive/5 border-destructive/20' : 'bg-success/5 border-success/20'}`}>
+                            {pendingToggle.currentStatus ? (
+                                <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                            ) : (
+                                <CheckCircle className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                            )}
+                            <div>
+                                <p className="font-semibold text-foreground">
+                                    {pendingToggle.currentStatus
+                                        ? 'Ubah status kembali menjadi BELUM BAYAR?'
+                                        : 'Tandai sebagai LUNAS?'}
+                                </p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    {pendingToggle.currentStatus
+                                        ? 'Status pelunasan akan dibatalkan dan dicatat sebagai tunggakan kembali.'
+                                        : 'Aset akan ditandai lunas dengan waktu pencatatan saat ini.'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-muted/30 rounded-xl p-4 space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Nama WP</span>
+                                <span className="font-semibold text-foreground">{pendingToggle.citizenName}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Lokasi Aset</span>
+                                <span className="font-medium text-foreground">{pendingToggle.assetLocation}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Jumlah</span>
+                                <span className="font-bold text-foreground">Rp {pendingToggle.assetAmount.toLocaleString('id-ID')}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Status Baru</span>
+                                <span className={`font-bold ${pendingToggle.currentStatus ? 'text-destructive' : 'text-success'}`}>
+                                    {pendingToggle.currentStatus ? 'BELUM BAYAR' : 'LUNAS'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     )
 }
