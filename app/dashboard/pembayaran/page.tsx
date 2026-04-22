@@ -612,7 +612,7 @@ export default function PembayaranPage() {
                             Batal
                         </Button>
                         <Button
-                            variant={pendingToggle?.currentStatus ? 'destructive' : 'primary'}
+                            variant={pendingToggle?.currentStatus ? 'danger' : 'primary'}
                             onClick={executeToggle}
                         >
                             {pendingToggle?.currentStatus ? 'Ya, Batalkan' : 'Ya, Lunaskan'}
