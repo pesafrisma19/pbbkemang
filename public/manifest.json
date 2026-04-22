@@ -2,7 +2,7 @@
   "name": "PBB Desa Kemang",
   "short_name": "PBB Kemang",
   "description": "Portal Digitalisasi Pajak Bumi dan Bangunan Desa Kemang",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
