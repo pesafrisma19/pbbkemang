@@ -19,8 +19,8 @@ export default function DashboardLayout({
     return (
         <div className="min-h-screen bg-background flex">
             <Sidebar />
-            <div className="flex-1 flex flex-col pb-20 lg:pb-0">
-                <header className="h-16 border-b flex items-center justify-between px-6 bg-background/50 backdrop-blur-sm sticky top-0 z-40">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden pb-16 md:pb-0">
+                <header className="h-16 shrink-0 border-b flex items-center justify-between px-4 md:px-6 bg-background/50 backdrop-blur-sm z-40">
                     <h1 className="font-semibold text-lg">Dashboard</h1>
                     <div className="flex items-center gap-2">
                         <ThemeToggle />

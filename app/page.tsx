@@ -635,7 +635,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-card border-t border-border py-12 pb-24 md:pb-12">
+      <footer className="bg-card border-t border-border py-8 md:py-12">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
             {/* Column 1: About */}
