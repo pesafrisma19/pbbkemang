@@ -30,8 +30,8 @@ export default function LoginPage() {
 
             if (res.ok && data.success) {
                 // Success - Set Cookie (Plain JS)
-                // Expires in 1 day
-                document.cookie = "admin_session=true; path=/; max-age=86400; SameSite=Lax";
+                // Expires in 30 days
+                document.cookie = "admin_session=true; path=/; max-age=2592000; SameSite=Lax";
                 router.push("/dashboard")
             } else {
                 setError(data.error || "Login gagal.")
@@ -105,7 +105,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="text-center text-xs text-muted-foreground">
-                    &copy; 2025 Pemerintah Desa Kemang
+                    &copy; 2026 Pemerintah Desa Kemang
                 </div>
             </div>
         </div>

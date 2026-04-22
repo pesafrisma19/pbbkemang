@@ -19,6 +19,9 @@ export default function RootLayout({
     <html lang="id" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://ozvzyubnftcteqjjedlx.supabase.co" crossOrigin="anonymous" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0f172a" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className={inter.className}>
         <ThemeProvider
