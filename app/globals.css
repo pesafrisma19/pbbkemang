@@ -96,6 +96,36 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Progress Bar Animation */
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+
+.animate-progress-fill {
+  animation: progress-fill 1.5s ease-out forwards;
+}
+
+/* Shimmer effect for stats */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+}
+
+/* Gradient card borders */
+.gradient-border-green {
+  border-image: linear-gradient(135deg, #34C759, #30D158) 1;
+}
+
+.gradient-border-orange {
+  border-image: linear-gradient(135deg, #FF9500, #FF9F0A) 1;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

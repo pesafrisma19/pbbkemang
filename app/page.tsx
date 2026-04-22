@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { Input } from "@/components/ui/Input"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
-import { Search, Loader2, MapPin, CheckCircle, TrendingUp, Building2, Globe, ExternalLink, Sun, Moon, Menu, X, Home as HomeIcon, MessageSquare, Users } from "lucide-react"
+import { Search, Loader2, MapPin, CheckCircle, TrendingUp, Building2, Globe, ExternalLink, Sun, Moon, Menu, X, Home as HomeIcon, MessageSquare, Users, BarChart3, Target, Wallet, FileText, Phone, Clock, MapPinned, ChevronDown, ChevronUp, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import dynamic from 'next/dynamic'
 const LandingPieChart = dynamic(() => import('@/components/features/LandingPieChart'), {
@@ -29,7 +29,12 @@ export default function Home() {
   const [stats, setStats] = useState({
     paidAmount: 0,
     unpaidAmount: 0,
+    totalTarget: 0,
     paidCount: 0,
+    unpaidCount: 0,
+    totalBidang: 0,
+    totalWP: 0,
+    wpLunas: 0,
     percentage: 0
   })
 
@@ -63,16 +68,16 @@ export default function Home() {
   // Fetch Stats on Load
   useEffect(() => {
     const fetchStats = async () => {
-      // Fetch ALL rows with pagination to avoid Supabase's 1000-row default limit
+      // Fetch ALL tax_objects with pagination to avoid Supabase's 1000-row default limit
       const PAGE_SIZE = 1000;
-      let allData: { amount_due: number; status: string }[] = [];
+      let allData: { amount_due: number; status: string; citizen_id: string }[] = [];
       let from = 0;
       let hasMore = true;
 
       while (hasMore) {
         const { data, error } = await supabase
           .from('tax_objects')
-          .select('amount_due, status')
+          .select('amount_due, status, citizen_id')
           .range(from, from + PAGE_SIZE - 1)
 
         if (error || !data) break;
@@ -84,18 +89,49 @@ export default function Home() {
         }
       }
 
+      // Count unique WP (citizens)
+      const { count: totalWP } = await supabase
+        .from('citizens')
+        .select('*', { count: 'exact', head: true })
+
       if (allData.length > 0) {
-        let paid = 0, unpaid = 0, count = 0;
+        let paid = 0, unpaid = 0, paidCount = 0, unpaidBidang = 0;
+        const citizenPaidMap = new Map<string, boolean>(); // track per-citizen paid status
+
         allData.forEach(t => {
           if (t.status === 'paid') {
             paid += t.amount_due;
-            count++;
+            paidCount++;
           } else {
             unpaid += t.amount_due;
+            unpaidBidang++;
+          }
+          // Track if citizen has ANY unpaid
+          if (t.citizen_id) {
+            const current = citizenPaidMap.get(t.citizen_id)
+            if (current === undefined) {
+              citizenPaidMap.set(t.citizen_id, t.status === 'paid')
+            } else if (t.status !== 'paid') {
+              citizenPaidMap.set(t.citizen_id, false)
+            }
           }
         })
-        const pct = Math.round((paid / (paid + unpaid || 1)) * 100);
-        setStats({ paidAmount: paid, unpaidAmount: unpaid, paidCount: count, percentage: pct })
+
+        const wpLunas = Array.from(citizenPaidMap.values()).filter(v => v === true).length;
+        const total = paid + unpaid;
+        const pct = total > 0 ? parseFloat(((paid / total) * 100).toFixed(1)) : 0;
+
+        setStats({
+          paidAmount: paid,
+          unpaidAmount: unpaid,
+          totalTarget: total,
+          paidCount,
+          unpaidCount: unpaidBidang,
+          totalBidang: allData.length,
+          totalWP: totalWP || 0,
+          wpLunas,
+          percentage: pct
+        })
       }
     }
     fetchStats()
@@ -313,7 +349,7 @@ export default function Home() {
 
           <div className="mt-auto pt-6 border-t border-border">
             <p className="text-xs text-muted-foreground text-center">
-              &copy; 2025 Pemerintah Desa Kemang
+              &copy; 2026 Pemerintah Desa Kemang
             </p>
           </div>
         </div>
@@ -365,7 +401,7 @@ export default function Home() {
         {/* Hero Section */}
         <div className="text-center space-y-4 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary-700 dark:text-primary rounded-full text-xs font-bold uppercase tracking-wide mb-2 border border-primary/20">
-            <CheckCircle size={12} /> Portal Resmi 2025
+            <CheckCircle size={12} /> Portal Resmi 2026
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground">
             Transparansi Pajak <br />
@@ -457,63 +493,140 @@ export default function Home() {
           )}
         </div>
 
-        {/* Public Stats Grid */}
-        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-200">
-          <StatsCard
-            title="Pajak Terkumpul"
-            value={`Rp ${stats.paidAmount.toLocaleString('id-ID')}`}
-            desc="Pendapatan Masuk"
-            color="primary"
-            icon={<CheckCircle className="text-primary w-5 h-5" />}
-          />
-          <StatsCard
-            title="Potensi Pajak"
-            value={`Rp ${stats.unpaidAmount.toLocaleString('id-ID')}`}
-            desc="Belum Terbayar"
-            color="warning"
-            icon={<TrendingUp className="text-warning w-5 h-5" />}
-          />
-          <StatsCard
-            title="Partisipasi"
-            value={`${stats.paidCount} Transaksi`}
-            desc="Warga Taat Pajak"
-            color="success"
-            icon={<Building2 className="text-success w-5 h-5" />}
-          />
-        </div>
-
-        {/* Pie Chart Section */}
-        <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300">
-          <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col items-center hover:shadow-md transition-shadow">
-            <h2 className="text-center font-bold text-foreground mb-1 flex items-center gap-2">
-              <TrendingUp size={18} className="text-primary" />
-              Rasio Kepatuhan
-            </h2>
-            <p className="text-xs text-foreground/70 mb-6">Update Data Realtime</p>
-
-            <div className="w-full relative min-w-0">
-              {/* Center Text */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none h-[220px]">
-                <span className="text-3xl font-extrabold text-foreground">{stats.percentage}%</span>
-                <span className="text-[10px] text-foreground/60 uppercase tracking-widest">Realisasi</span>
+        {/* === REALISASI PAJAK SECTION === */}
+        <div className="w-full max-w-5xl animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-200">
+          <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            {/* Section Header */}
+            <div className="px-6 pt-6 pb-4 border-b border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <BarChart3 className="text-primary w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-lg text-foreground">Realisasi Pajak Desa Kemang 2026</h2>
+                  <p className="text-xs text-muted-foreground">Data realtime • {stats.totalBidang.toLocaleString('id-ID')} bidang terdaftar</p>
+                </div>
               </div>
-              <LandingPieChart data={chartData} />
             </div>
 
-            <div className="flex justify-center gap-8 mt-4 text-xs font-medium w-full">
-              <div className="text-center px-4 py-2 bg-muted/30 rounded-lg">
-                <div className="flex items-center gap-1.5 justify-center mb-1">
-                  <div className="w-2 h-2 rounded-full bg-success"></div>
-                  <span className="text-foreground/70">Sudah Masuk</span>
+            {/* Stats Cards Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+              {/* Total Target */}
+              <div className="p-5 group">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Target</span>
                 </div>
-                <span className="font-bold text-foreground text-sm">Rp {stats.paidAmount.toLocaleString('id-ID')}</span>
+                <div className="text-2xl font-extrabold text-foreground tracking-tight">
+                  Rp {stats.totalTarget.toLocaleString('id-ID')}
+                </div>
+                <span className="text-xs text-muted-foreground mt-1 block">{stats.totalBidang.toLocaleString('id-ID')} Bidang</span>
               </div>
-              <div className="text-center px-4 py-2 bg-muted/30 rounded-lg">
-                <div className="flex items-center gap-1.5 justify-center mb-1">
-                  <div className="w-2 h-2 rounded-full bg-warning"></div>
-                  <span className="text-foreground/70">Belum Bayar</span>
+
+              {/* Sudah Masuk */}
+              <div className="p-5 group">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="w-4 h-4 text-success" />
+                  <span className="text-xs font-bold text-success uppercase tracking-wider">Sudah Masuk</span>
                 </div>
-                <span className="font-bold text-foreground text-sm">Rp {stats.unpaidAmount.toLocaleString('id-ID')}</span>
+                <div className="text-2xl font-extrabold text-success tracking-tight">
+                  Rp {stats.paidAmount.toLocaleString('id-ID')}
+                </div>
+                <span className="text-xs text-muted-foreground mt-1 block">{stats.paidCount} Bidang Lunas</span>
+              </div>
+
+              {/* Sisa Belum */}
+              <div className="p-5 group">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-warning" />
+                  <span className="text-xs font-bold text-warning uppercase tracking-wider">Sisa Belum</span>
+                </div>
+                <div className="text-2xl font-extrabold text-warning tracking-tight">
+                  Rp {stats.unpaidAmount.toLocaleString('id-ID')}
+                </div>
+                <span className="text-xs text-muted-foreground mt-1 block">{stats.unpaidCount.toLocaleString('id-ID')} Bidang Tunggakan</span>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="px-6 py-4 bg-muted/20 border-t border-border/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Realisasi Penerimaan</span>
+                <span className="text-sm font-extrabold text-primary">{stats.percentage}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-success animate-progress-fill relative"
+                  style={{ width: `${Math.max(stats.percentage, 0.5)}%` }}
+                >
+                  <div className="absolute inset-0 animate-shimmer rounded-full"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Chart + Breakdown Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border border-t border-border/50">
+              {/* Pie Chart */}
+              <div className="p-6 flex flex-col items-center">
+                <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                  <TrendingUp size={14} className="text-primary" />
+                  Rasio Kepatuhan
+                </h3>
+                <div className="w-full relative min-w-0">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none h-[220px]">
+                    <span className="text-3xl font-extrabold text-foreground">{stats.percentage}%</span>
+                    <span className="text-[10px] text-foreground/60 uppercase tracking-widest">Realisasi</span>
+                  </div>
+                  <LandingPieChart data={chartData} />
+                </div>
+                <div className="flex justify-center gap-6 mt-3 text-xs font-medium w-full">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-success"></div>
+                    <span className="text-foreground/70">Lunas</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-warning"></div>
+                    <span className="text-foreground/70">Belum Bayar</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Breakdown Detail */}
+              <div className="p-6 flex flex-col justify-center space-y-4">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <FileText size={14} className="text-primary" />
+                  Ringkasan Data
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <Users size={14} className="text-primary" />
+                      <span className="text-sm text-foreground">Total Wajib Pajak</span>
+                    </div>
+                    <span className="font-bold text-foreground">{stats.totalWP.toLocaleString('id-ID')} Orang</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-success/5 rounded-xl border border-success/10">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={14} className="text-success" />
+                      <span className="text-sm text-foreground">WP Lunas Semua</span>
+                    </div>
+                    <span className="font-bold text-success">{stats.wpLunas} Orang</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <MapPin size={14} className="text-primary" />
+                      <span className="text-sm text-foreground">Bidang Lunas</span>
+                    </div>
+                    <span className="font-bold text-foreground">{stats.paidCount} dari {stats.totalBidang.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-warning/5 rounded-xl border border-warning/10">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={14} className="text-warning" />
+                      <span className="text-sm text-foreground">Bidang Tunggakan</span>
+                    </div>
+                    <span className="font-bold text-warning">{stats.unpaidCount.toLocaleString('id-ID')} Bidang</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -523,45 +636,67 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-card border-t border-border py-12 pb-24 md:pb-12">
-        <div className="container mx-auto px-4 text-center space-y-8">
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2 font-bold text-foreground text-xl">
-              <Building2 className="text-primary" />
-              Desa Kemang
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+            {/* Column 1: About */}
+            <div className="text-center md:text-left">
+              <div className="flex items-center gap-2 font-bold text-foreground text-xl justify-center md:justify-start mb-3">
+                <Building2 className="text-primary" />
+                Desa Kemang
+              </div>
+              <p className="text-foreground/70 text-sm leading-relaxed">
+                Sistem Informasi Digital Pengelolaan Pajak Bumi dan Bangunan (PBB-P2).
+                Mewujudkan tata kelola desa yang transparan dan akuntabel.
+              </p>
             </div>
-            <p className="text-foreground/70 text-sm max-w-md mx-auto leading-normal">
-              Sistem Informasi Digital Pengelolaan Pajak Bumi dan Bangunan (PBB-P2). <br className="hidden md:block" />
-              Mewujudkan tata kelola desa yang transparan dan akuntabel.
-            </p>
+
+            {/* Column 2: Info Kontak */}
+            <div className="text-center md:text-left">
+              <h4 className="font-bold text-foreground text-sm uppercase tracking-wider mb-3">Informasi Kontak</h4>
+              <div className="space-y-2.5 text-sm text-foreground/70">
+                <div className="flex items-center gap-2 justify-center md:justify-start">
+                  <MapPinned size={14} className="text-primary shrink-0" />
+                  <span>Kantor Desa Kemang, Kec. Kemang, Kab. Bogor</span>
+                </div>
+                <div className="flex items-center gap-2 justify-center md:justify-start">
+                  <Clock size={14} className="text-primary shrink-0" />
+                  <span>Senin - Jumat, 08:00 - 15:00 WIB</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Column 3: Links */}
+            <div className="text-center md:text-left">
+              <h4 className="font-bold text-foreground text-sm uppercase tracking-wider mb-3">Tautan</h4>
+              <div className="space-y-2.5 text-sm">
+                <a
+                  href="https://desakemang.my.id"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-foreground/70 hover:text-primary transition-colors justify-center md:justify-start"
+                >
+                  <Globe size={14} />
+                  Website Desa Kemang
+                  <ExternalLink size={10} className="opacity-40" />
+                </a>
+                <a
+                  href="https://pbbdesakemang.vercel.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-foreground/70 hover:text-primary transition-colors justify-center md:justify-start"
+                >
+                  <CheckCircle size={14} />
+                  Bayar Pajak Online
+                  <ExternalLink size={10} className="opacity-40" />
+                </a>
+              </div>
+            </div>
           </div>
 
-          {/* External Links */}
-          <div className="flex flex-col md:flex-row justify-center gap-3 md:gap-4 text-sm font-medium">
-            <a
-              href="https://desakemang.my.id"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 text-foreground/70 hover:text-primary transition-colors bg-muted/50 px-5 py-2.5 rounded-full border border-border hover:border-primary/30"
-            >
-              <Globe size={16} />
-              Website Desa Kemang
-              <ExternalLink size={12} className="opacity-50" />
-            </a>
-            <a
-              href="https://pbbdesakemang.vercel.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 text-foreground/70 hover:text-primary transition-colors bg-muted/50 px-5 py-2.5 rounded-full border border-border hover:border-primary/30"
-            >
-              <CheckCircle size={16} />
-              Bayar Pajak Online
-              <ExternalLink size={12} className="opacity-50" />
-            </a>
-          </div>
-
-          <div className="pt-6 border-t border-border w-24 mx-auto"></div>
-          <div className="text-xs text-foreground/60">
-            &copy; 2025 Pemerintah Desa Kemang &bull; All rights reserved
+          <div className="mt-8 pt-6 border-t border-border text-center">
+            <div className="text-xs text-foreground/60">
+              &copy; 2026 Pemerintah Desa Kemang &bull; All rights reserved
+            </div>
           </div>
         </div>
       </footer>
@@ -569,10 +704,22 @@ export default function Home() {
   )
 }
 
+// Helper: format NOP for display
+function formatNop(nop: string) {
+  if (!nop) return { display: '-', isTemp: false };
+  if (nop.startsWith('TANPA-NOP-')) {
+    return { display: 'NOP Belum Terdaftar', isTemp: true };
+  }
+  return { display: nop, isTemp: false };
+}
+
 // Citizen Card Component
 function CitizenCard({ citizen, isExpanded, onToggle, highlight }: any) {
   const hasShared = citizen.assets?.some((a: any) => a.otherOwners && a.otherOwners.length > 0)
   const fullyPaid = citizen.unpaidCount === 0
+  const totalAssets = citizen.assets?.length || 0
+  const paidAssets = totalAssets - citizen.unpaidCount
+  const progressPct = totalAssets > 0 ? Math.round((paidAssets / totalAssets) * 100) : 0
 
   return (
     <div className={`bg-card rounded-xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${highlight ? 'border-border' : 'border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-900/10'}`}>
@@ -582,7 +729,7 @@ function CitizenCard({ citizen, isExpanded, onToggle, highlight }: any) {
         onClick={onToggle}
       >
         <div className="flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-bold text-lg text-foreground">{citizen.name}</h3>
             {!highlight && (
               <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
@@ -590,8 +737,8 @@ function CitizenCard({ citizen, isExpanded, onToggle, highlight }: any) {
               </span>
             )}
             {/* Status Badge */}
-            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${fullyPaid ? 'bg-success/15 text-success' : 'bg-destructive/10 text-destructive'}`}>
-              {fullyPaid ? 'LUNAS' : `${citizen.unpaidCount} BELUM BAYAR`}
+            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${fullyPaid ? 'bg-success/15 text-success' : 'bg-destructive/10 text-destructive'}`}>
+              {fullyPaid ? <><CheckCircle size={10} /> LUNAS SEMUA</> : <><AlertCircle size={10} /> {citizen.unpaidCount} BELUM BAYAR</>}
             </span>
           </div>
 
@@ -608,18 +755,31 @@ function CitizenCard({ citizen, isExpanded, onToggle, highlight }: any) {
             )}
             {hasShared && (
               <span className="flex items-center gap-1 text-warning bg-warning/10 px-1.5 py-0.5 rounded text-xs" title="Ada aset milik bersama">
-                <CheckCircle size={10} /> Shared Aset
+                <Users size={10} /> Shared Aset
               </span>
             )}
+          </div>
+
+          {/* Mini Progress Bar */}
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 max-w-[140px] bg-muted rounded-full h-1.5 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${fullyPaid ? 'bg-success' : 'bg-primary'}`}
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground font-medium">
+              {paidAssets}/{totalAssets} bidang lunas
+            </span>
           </div>
         </div>
 
         <div className="text-right">
-          <div className="text-sm text-muted-foreground">Total Tagihan</div>
-          <div className="font-extrabold text-lg">Rp {citizen.totalTax.toLocaleString('id-ID')}</div>
-          <div className="text-xs text-primary mt-1 flex items-center justify-end gap-1">
-            {isExpanded ? 'Sembunyikan' : 'Lihat Rincian'}
-            {isExpanded ? <TrendingUp className="rotate-180" size={12} /> : <TrendingUp size={12} />}
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">Total Tagihan</div>
+          <div className="font-extrabold text-lg text-foreground">Rp {citizen.totalTax.toLocaleString('id-ID')}</div>
+          <div className="text-xs text-primary mt-1 flex items-center justify-end gap-1 font-medium">
+            {isExpanded ? 'Sembunyikan' : `Lihat ${totalAssets} Rincian`}
+            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </div>
         </div>
       </div>
@@ -627,81 +787,69 @@ function CitizenCard({ citizen, isExpanded, onToggle, highlight }: any) {
       {/* Assets List (Collapsible) */}
       {isExpanded && citizen.assets && (
         <div className="border-t border-border bg-muted/20 p-2 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-2 max-h-[60vh] overflow-y-auto">
-          {citizen.assets.map((asset: any, idx: number) => (
-            <div key={idx} className="bg-background rounded-lg border border-border/60 p-3 sm:flex justify-between items-center gap-4 group hover:border-primary/30 transition-colors">
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-foreground">{asset.nop}</span>
+          {citizen.assets.map((asset: any, idx: number) => {
+            const nopInfo = formatNop(asset.nop);
+            return (
+              <div key={idx} className="bg-background rounded-lg border border-border/60 p-3 sm:flex justify-between items-center gap-4 group hover:border-primary/30 transition-colors">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {nopInfo.isTemp ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
+                        NOP Belum Terdaftar
+                      </span>
+                    ) : (
+                      <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-foreground">{nopInfo.display}</span>
+                    )}
+                    {asset.otherOwners?.length > 0 && (
+                      <Badge variant="outline" className="text-[10px] h-5 px-1 bg-yellow-100 text-yellow-800 border-yellow-200" title={`Dimiliki juga oleh: ${asset.otherOwners.map((o: any) => o.name).join(', ')}`}>
+                        👥 BERSAMA ({asset.otherOwners.length + 1})
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="font-medium text-sm flex flex-wrap gap-2">
+                    {asset.location_name}
+                    <span className="text-muted-foreground font-normal">• {asset.year}</span>
+                  </div>
+
+                  {/* Meta Badges */}
+                  <div className="flex flex-wrap gap-1">
+                    {asset.blok && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground">Blok {asset.blok}</span>}
+                    {asset.persil && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground">Persil {asset.persil}</span>}
+                    {asset.original_name && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 font-semibold italic">Ex: {asset.original_name}</span>}
+                  </div>
+
+                  {/* Shared Warning */}
                   {asset.otherOwners?.length > 0 && (
-                    <Badge variant="outline" className="text-[10px] h-5 px-1 bg-yellow-100 text-yellow-800 border-yellow-200" title={`Dimiliki juga oleh: ${asset.otherOwners.map((o: any) => o.name).join(', ')}`}>
-                      👥 BERSAMA ({asset.otherOwners.length + 1})
-                    </Badge>
+                    <div className="mt-2 bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded px-2 py-1.5 inline-block">
+                      <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 block mb-0.5">PEMILIK LAIN:</span>
+                      <div className="flex flex-col gap-1">
+                        {asset.otherOwners.map((o: any, ox: number) => (
+                          <div key={ox} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <span className="font-medium">• {o.name}</span>
+                            <span className="opacity-70 font-mono">(Rp {o.amount.toLocaleString('id-ID')})</span>
+                            <span className={`px-1 rounded text-[9px] font-bold ${o.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {o.status === 'paid' ? 'LUNAS' : 'BELUM'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
-                <div className="font-medium text-sm flex flex-wrap gap-2">
-                  {asset.location_name}
-                  <span className="text-muted-foreground font-normal">• {asset.year}</span>
+
+                <div className="mt-3 sm:mt-0 text-right min-w-[100px]">
+                  <div className="font-bold text-foreground text-base">Rp {asset.amount_due.toLocaleString('id-ID')}</div>
+                  <Badge variant={asset.status === 'paid' ? 'success' : 'destructive'} className="mt-1 text-[10px] h-5">
+                    {asset.status === 'paid' ? '✓ LUNAS' : 'BELUM'}
+                  </Badge>
                 </div>
-
-                {/* Meta Badges */}
-                <div className="flex flex-wrap gap-1">
-                  {asset.blok && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground">Blok {asset.blok}</span>}
-                  {asset.persil && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 text-muted-foreground">Persil {asset.persil}</span>}
-                  {asset.original_name && <span className="text-[10px] border border-border px-1 rounded bg-muted/50 font-semibold italic">Ex: {asset.original_name}</span>}
-                </div>
-
-                {/* Shared Warning */}
-                {asset.otherOwners?.length > 0 && (
-                  <div className="mt-2 bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded px-2 py-1.5 inline-block">
-                    <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 block mb-0.5">PEMILIK LAIN:</span>
-                    <div className="flex flex-col gap-1">
-                      {asset.otherOwners.map((o: any, ox: number) => (
-                        <div key={ox} className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                          <span className="font-medium">• {o.name}</span>
-                          <span className="opacity-70 font-mono">(Rp {o.amount.toLocaleString('id-ID')})</span>
-                          <span className={`px-1 rounded text-[9px] font-bold ${o.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {o.status === 'paid' ? 'LUNAS' : 'BELUM'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-
-              <div className="mt-3 sm:mt-0 text-right min-w-[100px]">
-                <div className="font-bold text-foreground text-base">Rp {asset.amount_due.toLocaleString('id-ID')}</div>
-                <Badge variant={asset.status === 'paid' ? 'success' : 'destructive'} className="mt-1 text-[10px] h-5">
-                  {asset.status === 'paid' ? 'LUNAS' : 'BELUM'}
-                </Badge>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   )
 }
 
-function StatsCard({ title, value, desc, color, icon }: any) {
-  const borderColor = {
-    primary: "hover:border-primary/50",
-    warning: "hover:border-warning/50",
-    success: "hover:border-success/50"
-  }[color as string] || "hover:border-primary/50";
-
-  return (
-    <div className={`group p-5 rounded-2xl border border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col items-start space-y-3 ${borderColor}`}>
-      <div className={`p-2.5 rounded-lg bg-muted text-foreground group-hover:bg-${color}/10 group-hover:text-${color} transition-colors`}>
-        {icon}
-      </div>
-      <div>
-        <span className="text-xs font-bold text-foreground/70 uppercase tracking-wider block mb-1">{title}</span>
-        <span className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">{value}</span>
-      </div>
-      <span className="text-xs text-foreground/60 flex items-center gap-1">
-        {desc}
-      </span>
-    </div>
-  )
-}
+// StatsCard component removed — replaced by integrated stats section above
