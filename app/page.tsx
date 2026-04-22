@@ -63,13 +63,30 @@ export default function Home() {
   // Fetch Stats on Load
   useEffect(() => {
     const fetchStats = async () => {
-      const { data, error } = await supabase
-        .from('tax_objects')
-        .select('amount_due, status')
+      // Fetch ALL rows with pagination to avoid Supabase's 1000-row default limit
+      const PAGE_SIZE = 1000;
+      let allData: { amount_due: number; status: string }[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (data) {
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('tax_objects')
+          .select('amount_due, status')
+          .range(from, from + PAGE_SIZE - 1)
+
+        if (error || !data) break;
+        allData = allData.concat(data);
+        if (data.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
+      }
+
+      if (allData.length > 0) {
         let paid = 0, unpaid = 0, count = 0;
-        data.forEach(t => {
+        allData.forEach(t => {
           if (t.status === 'paid') {
             paid += t.amount_due;
             count++;
