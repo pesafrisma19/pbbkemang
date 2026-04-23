@@ -255,7 +255,7 @@ export default function DhkpAdminPage() {
                         onChange={processImport}
                     />
                     <Button 
-                        variant="default" 
+                        variant="primary" 
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isImporting}
                         className="gap-2"
