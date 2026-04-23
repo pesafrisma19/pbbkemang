@@ -62,7 +62,7 @@ export default function DhkpAdminPage() {
             // Pagination logic
             const from = (currentPage - 1) * itemsPerPage
             const to = from + itemsPerPage - 1
-            
+
             const { data, count, error } = await query
                 .order('nama_wp', { ascending: true })
                 .range(from, to)
@@ -71,7 +71,7 @@ export default function DhkpAdminPage() {
 
             setDhkpResults(data || [])
             if (count !== null) setTotalCount(count)
-            
+
         } catch (error) {
             console.error("Error fetching DHKP:", error)
         } finally {
@@ -121,7 +121,7 @@ export default function DhkpAdminPage() {
 
                 // Process in batches of 500 to prevent timeout
                 const BATCH_SIZE = 500;
-                
+
                 for (let i = 0; i < data.length; i += BATCH_SIZE) {
                     const batch = data.slice(i, i + BATCH_SIZE);
                     const upsertData = [];
@@ -129,7 +129,7 @@ export default function DhkpAdminPage() {
                     for (const row of batch as any[]) {
                         const nopRaw = row['NOP'] ? String(row['NOP']).trim() : ""
                         const nameRaw = row['NAMA WP'] || row['NAMA_WP']
-                        
+
                         if (!nopRaw || !nameRaw) {
                             skippedCount++;
                             continue;
@@ -159,7 +159,7 @@ export default function DhkpAdminPage() {
                             luas_bangunan: Number(row['LUAS BANGUNAN']) || 0,
                             ketetapan: nominal,
                             tahun_pajak: row['TAHUN PAJAK'] ? String(row['TAHUN PAJAK']) : new Date().getFullYear().toString(),
-                            
+
                             // Ambil data manual dari Excel jika ada
                             blok_excel: row['BLOK'] ? String(row['BLOK']).trim() : null,
                             persil_excel: row['PERSIL'] ? String(row['PERSIL']).trim() : null,
@@ -182,10 +182,10 @@ export default function DhkpAdminPage() {
                         // Merge manual data so it's not overwritten by Excel
                         const finalBatch = upsertData.map(d => {
                             const existing = existingMap.get(d.nop);
-                            
+
                             // Ekstrak data excel, lalu buang field temporary
                             const { blok_excel, persil_excel, kadus_excel, kelas_excel, ...rest } = d;
-                            
+
                             if (existing) {
                                 updatedCount++;
                                 return {
@@ -248,6 +248,28 @@ export default function DhkpAdminPage() {
         reader.readAsBinaryString(file)
     }
 
+    const handleDownloadTemplate = () => {
+        const headers = [
+            "NOP", "NAMA_WP", "ALAMAT_WP", "ALAMAT_OP", "RT_OP", "RW_OP", 
+            "LUAS_BUMI", "LUAS_BANGUNAN", "KETETAPAN", "TAHUN_PAJAK", 
+            "BLOK", "PERSIL", "KADUS", "KELAS"
+        ];
+
+        const sample = [
+            ["320513000500010007", "Asep Saepudin", "Jl. Mawar No.1", "Sawah Lega", "001", "002", 100, 50, 50000, 2024, "A1", "10", "Dusun Manis", "S III"],
+            ["320513000500020008", "Budi Santoso", "Jl. Melati No.2", "Rumah Tinggal", "003", "004", 150, 100, 125000, 2024, "B2", "12", "Dusun Pahing", "D II"]
+        ];
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
+
+        const wscols = headers.map(() => ({ wch: 18 }));
+        ws['!cols'] = wscols;
+
+        XLSX.utils.book_append_sheet(wb, ws, "Template_DHKP");
+        XLSX.writeFile(wb, "Template_Import_DHKP.xlsx");
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-12 w-full min-w-0">
             {/* Header */}
@@ -261,8 +283,8 @@ export default function DhkpAdminPage() {
                         Buku pintar referensi data ketetapan pajak desa.
                     </p>
                 </div>
-                
-                <div className="flex items-center gap-2">
+
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <input
                         type="file"
                         accept=".xlsx, .xls"
@@ -270,14 +292,25 @@ export default function DhkpAdminPage() {
                         ref={fileInputRef}
                         onChange={processImport}
                     />
-                    <Button 
-                        variant="primary" 
+                    
+                    <Button
+                        variant="secondary"
+                        onClick={handleDownloadTemplate}
+                        title="Download Format Excel DHKP"
+                        className="gap-2 flex-1 sm:flex-none"
+                    >
+                        <FileDown className="w-4 h-4" />
+                        <span className="hidden sm:inline">Format</span>
+                    </Button>
+
+                    <Button
+                        variant="primary"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isImporting}
-                        className="gap-2"
+                        className="gap-2 flex-1 sm:flex-none"
                     >
                         {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                        {isImporting ? "Memproses..." : "Upload DHKP (.xlsx)"}
+                        {isImporting ? "Memproses..." : "Upload DHKP"}
                     </Button>
                 </div>
             </div>
@@ -346,7 +379,7 @@ export default function DhkpAdminPage() {
                         </tbody>
                     </table>
                 </div>
-                
+
                 {/* Pagination Controls */}
                 {totalCount > 0 && (
                     <div className="px-4 py-3 border-t border-border flex items-center justify-between bg-muted/10">
@@ -354,17 +387,17 @@ export default function DhkpAdminPage() {
                             Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalCount)} dari {totalCount} data
                         </span>
                         <div className="flex gap-2">
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
                             >
                                 Sebelumnya
                             </Button>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => setCurrentPage(p => p + 1)}
                                 disabled={currentPage * itemsPerPage >= totalCount}
                             >
