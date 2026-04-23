@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/Button"
 import { Search, Loader2, MapPin, CheckCircle, TrendingUp, Building2, Globe, ExternalLink, Sun, Moon, Menu, X, Home as HomeIcon, MessageSquare, Users, BarChart3, Target, Wallet, FileText, Phone, Clock, MapPinned, ChevronDown, ChevronUp, AlertCircle, Database } from "lucide-react"
 import Link from "next/link"
 import dynamic from 'next/dynamic'
-import { DhkpPublicDrawer } from "@/components/DhkpPublicDrawer"
 const LandingPieChart = dynamic(() => import('@/components/features/LandingPieChart'), {
   ssr: false,
   loading: () => <div className="h-[220px] w-full bg-muted/20 animate-pulse rounded-full"></div>
@@ -25,9 +24,6 @@ export default function Home() {
 
   // Mobile Menu State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  
-  // DHKP Drawer State
-  const [isDhkpDrawerOpen, setIsDhkpDrawerOpen] = useState(false)
 
   // Stats State
   const [stats, setStats] = useState({
@@ -341,13 +337,14 @@ export default function Home() {
               <HomeIcon size={20} />
               Beranda
             </Link>
-            <button 
-              onClick={() => { setIsDhkpDrawerOpen(true); setMobileMenuOpen(false); }}
+            <Link 
+              href="/dhkp"
+              onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors w-full text-left"
             >
               <Database size={20} />
               Cari DHKP Master
-            </button>
+            </Link>
             <Link href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors">
               <MessageSquare size={20} />
               Pengaduan
@@ -387,13 +384,13 @@ export default function Home() {
             <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Beranda
             </Link>
-            <button 
-              onClick={() => setIsDhkpDrawerOpen(true)}
+            <Link 
+              href="/dhkp"
               className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
             >
               <Database size={14} />
               Data DHKP
-            </button>
+            </Link>
             <Link href="#" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
               Pengaduan
             </Link>
@@ -413,8 +410,6 @@ export default function Home() {
           </div>
         </div>
       </header>
-
-      <DhkpPublicDrawer isOpen={isDhkpDrawerOpen} onClose={() => setIsDhkpDrawerOpen(false)} />
 
       <main className="flex-1 pt-24 pb-12 px-4 container mx-auto flex flex-col items-center gap-12">
 

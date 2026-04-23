@@ -22,6 +22,7 @@ type DhkpRecord = {
     blok: string | null;
     persil: string | null;
     kadus: string | null;
+    kelas: string | null;
     tahun_pajak: string | null;
 }
 
@@ -163,6 +164,7 @@ export default function DhkpAdminPage() {
                             blok_excel: row['BLOK'] ? String(row['BLOK']).trim() : null,
                             persil_excel: row['PERSIL'] ? String(row['PERSIL']).trim() : null,
                             kadus_excel: row['KADUS'] ? String(row['KADUS']).trim() : null,
+                            kelas_excel: row['KELAS'] ? String(row['KELAS']).trim() : null,
                         });
                     }
 
@@ -171,7 +173,7 @@ export default function DhkpAdminPage() {
                         const nops = upsertData.map(d => d.nop);
                         const { data: existingRecords } = await supabase
                             .from('dhkp_records')
-                            .select('nop, blok, persil, kadus')
+                            .select('nop, blok, persil, kadus, kelas')
                             .in('nop', nops);
 
                         const existingMap = new Map();
@@ -182,7 +184,7 @@ export default function DhkpAdminPage() {
                             const existing = existingMap.get(d.nop);
                             
                             // Ekstrak data excel, lalu buang field temporary
-                            const { blok_excel, persil_excel, kadus_excel, ...rest } = d;
+                            const { blok_excel, persil_excel, kadus_excel, kelas_excel, ...rest } = d;
                             
                             if (existing) {
                                 updatedCount++;
@@ -192,7 +194,8 @@ export default function DhkpAdminPage() {
                                     // Jika di excel ada isinya, pakai yang di excel (berguna untuk import pertama kali).
                                     blok: existing.blok && !blok_excel ? existing.blok : blok_excel,
                                     persil: existing.persil && !persil_excel ? existing.persil : persil_excel,
-                                    kadus: existing.kadus && !kadus_excel ? existing.kadus : kadus_excel
+                                    kadus: existing.kadus && !kadus_excel ? existing.kadus : kadus_excel,
+                                    kelas: existing.kelas && !kelas_excel ? existing.kelas : kelas_excel
                                 };
                             } else {
                                 insertedCount++;
@@ -200,7 +203,8 @@ export default function DhkpAdminPage() {
                                     ...rest,
                                     blok: blok_excel,
                                     persil: persil_excel,
-                                    kadus: kadus_excel
+                                    kadus: kadus_excel,
+                                    kelas: kelas_excel
                                 };
                             }
                         });
@@ -317,10 +321,11 @@ export default function DhkpAdminPage() {
                                         <div className="text-[10px] text-muted-foreground">RT/RW: {record.rt_op || '-'}/{record.rw_op || '-'}</div>
                                     </td>
                                     <td className="px-4 py-3">
-                                        {record.blok || record.persil ? (
-                                            <div className="flex gap-1">
+                                        {record.blok || record.persil || record.kelas ? (
+                                            <div className="flex flex-wrap gap-1">
                                                 {record.blok && <span className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded text-xs">B:{record.blok}</span>}
                                                 {record.persil && <span className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded text-xs">P:{record.persil}</span>}
+                                                {record.kelas && <span className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 px-2 py-0.5 rounded text-xs">K:{record.kelas}</span>}
                                             </div>
                                         ) : (
                                             <span className="text-muted-foreground/50 text-xs">-</span>

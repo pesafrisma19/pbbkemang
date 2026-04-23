@@ -13,6 +13,7 @@ CREATE TABLE public.dhkp_records (
     blok VARCHAR(100),
     persil VARCHAR(100),
     kadus VARCHAR(100),
+    kelas VARCHAR(50),
     tahun_pajak VARCHAR(4),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
