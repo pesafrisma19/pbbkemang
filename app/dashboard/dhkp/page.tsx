@@ -158,10 +158,11 @@ export default function DhkpAdminPage() {
                             luas_bangunan: Number(row['LUAS BANGUNAN']) || 0,
                             ketetapan: nominal,
                             tahun_pajak: row['TAHUN PAJAK'] ? String(row['TAHUN PAJAK']) : new Date().getFullYear().toString(),
-                            // We don't overwrite blok, persil, kadus directly here. 
-                            // Supabase upsert will overwrite if we provide null, so we must fetch existing first 
-                            // OR use a smart SQL RPC. 
-                            // For safety without RPC, we will fetch existing NOPs in this batch first.
+                            
+                            // Ambil data manual dari Excel jika ada
+                            blok_excel: row['BLOK'] ? String(row['BLOK']).trim() : null,
+                            persil_excel: row['PERSIL'] ? String(row['PERSIL']).trim() : null,
+                            kadus_excel: row['KADUS'] ? String(row['KADUS']).trim() : null,
                         });
                     }
 
@@ -179,17 +180,28 @@ export default function DhkpAdminPage() {
                         // Merge manual data so it's not overwritten by Excel
                         const finalBatch = upsertData.map(d => {
                             const existing = existingMap.get(d.nop);
+                            
+                            // Ekstrak data excel, lalu buang field temporary
+                            const { blok_excel, persil_excel, kadus_excel, ...rest } = d;
+                            
                             if (existing) {
                                 updatedCount++;
                                 return {
-                                    ...d,
-                                    blok: existing.blok,
-                                    persil: existing.persil,
-                                    kadus: existing.kadus
+                                    ...rest,
+                                    // Jika di database sudah ada isinya, dan di excel kosong, pakai yang di database.
+                                    // Jika di excel ada isinya, pakai yang di excel (berguna untuk import pertama kali).
+                                    blok: existing.blok && !blok_excel ? existing.blok : blok_excel,
+                                    persil: existing.persil && !persil_excel ? existing.persil : persil_excel,
+                                    kadus: existing.kadus && !kadus_excel ? existing.kadus : kadus_excel
                                 };
                             } else {
                                 insertedCount++;
-                                return d;
+                                return {
+                                    ...rest,
+                                    blok: blok_excel,
+                                    persil: persil_excel,
+                                    kadus: kadus_excel
+                                };
                             }
                         });
 
