@@ -14,6 +14,9 @@ type DhkpRecord = {
     alamat_op: string;
     ketetapan: number;
     kadus: string | null;
+    blok: string | null;
+    persil: string | null;
+    kelas: string | null;
 }
 
 export default function DhkpPublicPage() {
@@ -24,7 +27,8 @@ export default function DhkpPublicPage() {
     
     // Stats State
     const [totalDhkpAmount, setTotalDhkpAmount] = useState(0)
-    const [kadusStats, setKadusStats] = useState<Record<string, number>>({})
+    const [totalDhkpCount, setTotalDhkpCount] = useState(0)
+    const [kadusStats, setKadusStats] = useState<Record<string, { count: number; amount: number }>>({})
     const [statsLoading, setStatsLoading] = useState(true)
 
     // Pagination
@@ -54,16 +58,18 @@ export default function DhkpPublicPage() {
                 }
 
                 let total = 0;
-                const kStats: Record<string, number> = {};
+                const kStats: Record<string, { count: number; amount: number }> = {};
 
                 allData.forEach(item => {
                     total += Number(item.ketetapan) || 0;
                     const kadusName = item.kadus ? String(item.kadus).trim() : 'Tanpa Kadus';
-                    if (!kStats[kadusName]) kStats[kadusName] = 0;
-                    kStats[kadusName] += Number(item.ketetapan) || 0;
+                    if (!kStats[kadusName]) kStats[kadusName] = { count: 0, amount: 0 };
+                    kStats[kadusName].count++;
+                    kStats[kadusName].amount += Number(item.ketetapan) || 0;
                 })
 
                 setTotalDhkpAmount(total)
+                setTotalDhkpCount(allData.length)
                 setKadusStats(kStats)
             } catch (err) {
                 console.error("Stats fetch error:", err)
@@ -79,7 +85,7 @@ export default function DhkpPublicPage() {
     const fetchDhkpData = useCallback(async () => {
         setIsLoading(true)
         try {
-            let query = supabase.from('dhkp_records').select('id, nop, nama_wp, alamat_op, ketetapan, kadus', { count: 'exact' })
+            let query = supabase.from('dhkp_records').select('id, nop, nama_wp, alamat_op, ketetapan, kadus, blok, persil, kelas', { count: 'exact' })
 
             if (dhkpQuery) {
                 query = query.or(`nop.ilike.%${dhkpQuery}%,nama_wp.ilike.%${dhkpQuery}%,alamat_op.ilike.%${dhkpQuery}%`)
@@ -136,25 +142,36 @@ export default function DhkpPublicPage() {
             <main className="container mx-auto px-4 pt-8 max-w-4xl space-y-8">
                 {/* Stats Section */}
                 <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-                    <div className="p-5 bg-primary/5 flex items-center justify-between border-b border-border">
-                        <div className="flex items-center gap-2 font-bold text-primary">
-                            <TrendingUp size={20} />
-                            Total Ketetapan DHKP
+                    <div className="p-5 bg-primary/5 border-b border-border">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-bold text-primary">
+                                <TrendingUp size={20} />
+                                Ringkasan DHKP
+                            </div>
+                            {statsLoading && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
                         </div>
-                        {statsLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                        ) : (
-                            <div className="font-extrabold text-xl text-primary">
-                                Rp {totalDhkpAmount.toLocaleString('id-ID')}
+                        {!statsLoading && (
+                            <div className="grid grid-cols-2 gap-4 mt-4">
+                                <div className="bg-background rounded-xl p-4 border border-border/50">
+                                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total DHKP</div>
+                                    <div className="font-extrabold text-2xl text-foreground mt-1">{totalDhkpCount.toLocaleString('id-ID')}</div>
+                                    <div className="text-xs text-muted-foreground">Ketetapan</div>
+                                </div>
+                                <div className="bg-background rounded-xl p-4 border border-border/50">
+                                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Pajak</div>
+                                    <div className="font-extrabold text-2xl text-primary mt-1">Rp {totalDhkpAmount.toLocaleString('id-ID')}</div>
+                                    <div className="text-xs text-muted-foreground">Nominal</div>
+                                </div>
                             </div>
                         )}
                     </div>
                     
-                    <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4 bg-background">
-                        {!statsLoading && Object.entries(kadusStats).sort().map(([kadus, amount]) => (
+                    <div className="p-5 grid grid-cols-2 md:grid-cols-3 gap-3 bg-background">
+                        {!statsLoading && Object.entries(kadusStats).sort().map(([kadus, stats]) => (
                             <div key={kadus} className="flex flex-col p-3 bg-muted/40 rounded-xl border border-border/50">
                                 <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{kadus}</span>
-                                <span className="font-bold text-foreground mt-1">Rp {amount.toLocaleString('id-ID')}</span>
+                                <span className="font-bold text-foreground mt-1">{stats.count} DHKP</span>
+                                <span className="text-xs text-muted-foreground">Rp {stats.amount.toLocaleString('id-ID')}</span>
                             </div>
                         ))}
                     </div>
@@ -198,10 +215,17 @@ export default function DhkpPublicPage() {
                                         <div className="text-sm font-mono text-muted-foreground mb-2 bg-muted inline-block px-2 py-0.5 rounded">
                                             {item.nop}
                                         </div>
-                                        <div className="text-sm text-foreground/80 flex items-start gap-2">
+                                        <div className="text-sm text-foreground/80 flex items-start gap-2 mb-2">
                                             <MapPin size={16} className="mt-0.5 text-primary shrink-0" />
                                             <span>{item.alamat_op}</span>
                                         </div>
+                                        {(item.blok || item.persil || item.kelas) && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {item.blok && <span className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-medium">Blok: {item.blok}</span>}
+                                                {item.persil && <span className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded text-xs font-medium">Persil: {item.persil}</span>}
+                                                {item.kelas && <span className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 px-2 py-0.5 rounded text-xs font-medium">Kelas: {item.kelas}</span>}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="text-left md:text-right w-full md:w-auto bg-muted/30 md:bg-transparent p-3 md:p-0 rounded-xl">
                                         <div className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Ketetapan Pajak</div>
