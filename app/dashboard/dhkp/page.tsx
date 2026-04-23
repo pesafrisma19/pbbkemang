@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
-import { Search, Upload, FileDown, Loader2, Database, AlertCircle, Edit } from "lucide-react"
+import { Search, Upload, FileDown, Loader2, Database, AlertCircle, Edit, Trash } from "lucide-react"
 import { Modal } from "@/components/ui/Modal"
 import * as XLSX from 'xlsx'
 
@@ -47,6 +47,10 @@ export default function DhkpAdminPage() {
         skipped: number;
         errors: string[];
     } | null>(null)
+
+    // Delete Confirmation State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; nop: string; nama: string } | null>(null)
 
     // Fetch Data
     const fetchDhkpData = useCallback(async () => {
@@ -91,6 +95,82 @@ export default function DhkpAdminPage() {
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDhkpQuery(e.target.value)
         setCurrentPage(1)
+    }
+
+    // Delete handler
+    const confirmDelete = (id: string, nop: string, nama: string) => {
+        setDeleteTarget({ id, nop, nama })
+        setIsDeleteModalOpen(true)
+    }
+
+    const executeDelete = async () => {
+        if (!deleteTarget) return
+        try {
+            const { error } = await supabase
+                .from('dhkp_records')
+                .delete()
+                .eq('id', deleteTarget.id)
+
+            if (error) throw error
+            fetchDhkpData()
+        } catch (err) {
+            console.error("Delete error:", err)
+            alert("Gagal menghapus data: " + String(err))
+        } finally {
+            setIsDeleteModalOpen(false)
+            setDeleteTarget(null)
+        }
+    }
+
+    // Download all data
+    const handleDownloadData = async () => {
+        try {
+            let hasMore = true;
+            let from = 0;
+            const pageSize = 1000;
+            let allData: any[] = [];
+
+            while (hasMore) {
+                const { data, error } = await supabase
+                    .from('dhkp_records')
+                    .select('*')
+                    .order('nama_wp', { ascending: true })
+                    .range(from, from + pageSize - 1)
+
+                if (error || !data) break;
+                allData = allData.concat(data);
+                if (data.length < pageSize) hasMore = false;
+                else from += pageSize;
+            }
+
+            if (allData.length === 0) {
+                alert("Tidak ada data untuk diunduh.")
+                return
+            }
+
+            const headers = [
+                "NOP", "NAMA_WP", "ALAMAT_WP", "ALAMAT_OP", "RT_OP", "RW_OP",
+                "LUAS_BUMI", "LUAS_BANGUNAN", "KETETAPAN", "TAHUN_PAJAK",
+                "BLOK", "PERSIL", "KADUS", "KELAS"
+            ];
+
+            const rows = allData.map(r => [
+                r.nop, r.nama_wp, r.alamat_wp, r.alamat_op, r.rt_op, r.rw_op,
+                r.luas_bumi, r.luas_bangunan, r.ketetapan, r.tahun_pajak,
+                r.blok, r.persil, r.kadus, r.kelas
+            ]);
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+            const wscols = headers.map(() => ({ wch: 18 }));
+            ws['!cols'] = wscols;
+
+            XLSX.utils.book_append_sheet(wb, ws, "Data_DHKP");
+            XLSX.writeFile(wb, `Data_DHKP_${new Date().toISOString().slice(0,10)}.xlsx`);
+        } catch (err) {
+            console.error("Download error:", err)
+            alert("Gagal download data.")
+        }
     }
 
     const processImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,6 +384,16 @@ export default function DhkpAdminPage() {
                     </Button>
 
                     <Button
+                        variant="secondary"
+                        onClick={handleDownloadData}
+                        title="Download Semua Data DHKP"
+                        className="gap-2 flex-1 sm:flex-none"
+                    >
+                        <FileDown className="w-4 h-4" />
+                        <span className="hidden sm:inline">Data</span>
+                    </Button>
+
+                    <Button
                         variant="primary"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isImporting}
@@ -340,6 +430,7 @@ export default function DhkpAdminPage() {
                                 <th className="px-4 py-3 font-semibold">Lokasi OP</th>
                                 <th className="px-4 py-3 font-semibold">Blok / Persil</th>
                                 <th className="px-4 py-3 font-semibold text-right">Ketetapan</th>
+                                <th className="px-4 py-3 font-semibold text-center w-16"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -367,11 +458,20 @@ export default function DhkpAdminPage() {
                                     <td className="px-4 py-3 text-right font-bold">
                                         Rp {record.ketetapan.toLocaleString('id-ID')}
                                     </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <button
+                                            onClick={() => confirmDelete(record.id, record.nop, record.nama_wp)}
+                                            className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-md hover:bg-destructive/10"
+                                            title="Hapus data ini"
+                                        >
+                                            <Trash size={14} />
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                             {dhkpResults.length === 0 && !isLoading && (
                                 <tr>
-                                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                                         Tidak ada data DHKP yang ditemukan.
                                     </td>
                                 </tr>
@@ -452,6 +552,38 @@ export default function DhkpAdminPage() {
                         <Button onClick={() => setIsResultModalOpen(false)}>Tutup</Button>
                     </div>
                 </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal isOpen={isDeleteModalOpen} onClose={() => { setIsDeleteModalOpen(false); setDeleteTarget(null); }} title="Hapus Data DHKP"
+                footer={
+                    <>
+                        <Button variant="outline" onClick={() => { setIsDeleteModalOpen(false); setDeleteTarget(null); }}>Batal</Button>
+                        <Button variant="danger" onClick={executeDelete}>Ya, Hapus</Button>
+                    </>
+                }
+            >
+                {deleteTarget && (
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-3 p-4 rounded-xl border bg-destructive/5 border-destructive/20">
+                            <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-semibold text-foreground">Yakin ingin menghapus data ini?</p>
+                                <p className="text-sm text-muted-foreground mt-1">Data yang dihapus tidak bisa dikembalikan.</p>
+                            </div>
+                        </div>
+                        <div className="bg-muted/30 rounded-xl p-4 space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">NOP</span>
+                                <span className="font-mono font-medium text-foreground">{deleteTarget.nop}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Nama WP</span>
+                                <span className="font-semibold text-foreground">{deleteTarget.nama}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     )
