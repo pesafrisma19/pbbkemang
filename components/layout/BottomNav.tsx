@@ -3,12 +3,13 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Wallet, Settings } from "lucide-react"
+import { LayoutDashboard, Users, Wallet, Settings, Database } from "lucide-react"
 
 const menuItems = [
     { href: "/dashboard", label: "Home", icon: LayoutDashboard },
     { href: "/dashboard/data-wp", label: "Data", icon: Users },
     { href: "/dashboard/pembayaran", label: "Bayar", icon: Wallet },
+    { href: "/dashboard/dhkp", label: "DHKP", icon: Database },
     { href: "/dashboard/pengaturan", label: "Set", icon: Settings },
 ]
 
