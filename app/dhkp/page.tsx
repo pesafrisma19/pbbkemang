@@ -24,7 +24,7 @@ export default function DhkpPublicPage() {
     const [dhkpResults, setDhkpResults] = useState<DhkpRecord[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [totalCount, setTotalCount] = useState(0)
-    
+
     // Stats State
     const [totalDhkpAmount, setTotalDhkpAmount] = useState(0)
     const [totalDhkpCount, setTotalDhkpCount] = useState(0)
@@ -44,13 +44,13 @@ export default function DhkpPublicPage() {
                 let from = 0;
                 const pageSize = 1000;
                 let allData: any[] = [];
-                
+
                 while (hasMore) {
                     const { data, error } = await supabase
                         .from('dhkp_records')
                         .select('ketetapan, kadus')
                         .range(from, from + pageSize - 1)
-                        
+
                     if (error || !data) break;
                     allData = allData.concat(data);
                     if (data.length < pageSize) hasMore = false;
@@ -77,7 +77,7 @@ export default function DhkpPublicPage() {
                 setStatsLoading(false)
             }
         }
-        
+
         fetchStats()
     }, [])
 
@@ -93,7 +93,7 @@ export default function DhkpPublicPage() {
 
             const from = (currentPage - 1) * itemsPerPage
             const to = from + itemsPerPage - 1
-            
+
             const { data, count, error } = await query
                 .order('nama_wp', { ascending: true })
                 .range(from, to)
@@ -102,7 +102,7 @@ export default function DhkpPublicPage() {
 
             setDhkpResults(data || [])
             if (count !== null) setTotalCount(count)
-            
+
         } catch (error) {
             console.error("Error fetching DHKP:", error)
         } finally {
@@ -165,7 +165,7 @@ export default function DhkpPublicPage() {
                             </div>
                         )}
                     </div>
-                    
+
                     <div className="p-5 grid grid-cols-2 md:grid-cols-3 gap-3 bg-background">
                         {!statsLoading && Object.entries(kadusStats).sort().map(([kadus, stats]) => (
                             <div key={kadus} className="flex flex-col p-3 bg-muted/40 rounded-xl border border-border/50">
@@ -204,23 +204,19 @@ export default function DhkpPublicPage() {
                             dhkpResults.map((item) => (
                                 <div key={item.id} className="bg-card p-5 rounded-2xl border border-border hover:border-primary/50 transition-colors group shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                     <div className="flex-1">
-                                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                                            <h3 className="font-bold text-lg text-foreground">{item.nama_wp}</h3>
-                                            {item.kadus && (
-                                                <span className="text-[10px] uppercase font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-full border border-primary/20">
-                                                    {item.kadus}
-                                                </span>
-                                            )}
-                                        </div>
+                                        <h3 className="font-bold text-lg text-foreground mb-2">{item.nama_wp}</h3>
                                         <div className="text-sm font-mono text-muted-foreground mb-2 bg-muted inline-block px-2 py-0.5 rounded">
                                             {item.nop}
                                         </div>
-                                        <div className="text-sm text-foreground/80 flex items-start gap-2 mb-2">
+                                        <div className="text-sm text-foreground/80 flex items-start gap-2 mb-1">
                                             <MapPin size={16} className="mt-0.5 text-primary shrink-0" />
-                                            <span>{item.alamat_op}</span>
+                                            <span>
+                                                {item.alamat_op}
+                                                {item.kadus && <span className="text-muted-foreground"> • Kadus {item.kadus}</span>}
+                                            </span>
                                         </div>
                                         {(item.blok || item.persil || item.kelas) && (
-                                            <div className="flex flex-wrap gap-1.5">
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
                                                 {item.blok && <span className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-medium">Blok: {item.blok}</span>}
                                                 {item.persil && <span className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded text-xs font-medium">Persil: {item.persil}</span>}
                                                 {item.kelas && <span className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 px-2 py-0.5 rounded text-xs font-medium">Kelas: {item.kelas}</span>}
@@ -250,8 +246,8 @@ export default function DhkpPublicPage() {
                 {/* Pagination */}
                 {totalCount > itemsPerPage && (
                     <div className="flex items-center justify-center gap-4 pt-6 pb-12">
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             className="gap-2 w-32"
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
@@ -261,8 +257,8 @@ export default function DhkpPublicPage() {
                         <span className="text-sm font-medium text-muted-foreground min-w-[80px] text-center">
                             Page {currentPage}
                         </span>
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             className="gap-2 w-32"
                             onClick={() => setCurrentPage(p => p + 1)}
                             disabled={currentPage * itemsPerPage >= totalCount}
