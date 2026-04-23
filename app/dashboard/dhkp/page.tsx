@@ -249,14 +249,14 @@ export default function DhkpAdminPage() {
     }
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-12">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Database className="text-primary" />
+                    <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                        <Database className="text-primary w-6 h-6" />
                         Master DHKP
-                    </h1>
+                    </h2>
                     <p className="text-muted-foreground text-sm mt-1">
                         Buku pintar referensi data ketetapan pajak desa.
                     </p>
