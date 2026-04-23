@@ -249,7 +249,7 @@ export default function DhkpAdminPage() {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-12 w-full min-w-0">
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
@@ -297,8 +297,8 @@ export default function DhkpAdminPage() {
             </div>
 
             {/* Data Table */}
-            <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+            <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm w-full max-w-[calc(100vw-2rem)] md:max-w-full">
+                <div className="overflow-x-auto w-full">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                             <tr>
