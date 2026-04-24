@@ -17,6 +17,8 @@ type DhkpRecord = {
     blok: string | null;
     persil: string | null;
     kelas: string | null;
+    luas_bumi: number;
+    luas_bangunan: number;
 }
 
 export default function DhkpPublicPage() {
@@ -85,7 +87,7 @@ export default function DhkpPublicPage() {
     const fetchDhkpData = useCallback(async () => {
         setIsLoading(true)
         try {
-            let query = supabase.from('dhkp_records').select('id, nop, nama_wp, alamat_op, ketetapan, kadus, blok, persil, kelas', { count: 'exact' })
+            let query = supabase.from('dhkp_records').select('id, nop, nama_wp, alamat_op, ketetapan, kadus, blok, persil, kelas, luas_bumi, luas_bangunan', { count: 'exact' })
 
             if (dhkpQuery) {
                 query = query.or(`nop.ilike.%${dhkpQuery}%,nama_wp.ilike.%${dhkpQuery}%,alamat_op.ilike.%${dhkpQuery}%`)
@@ -169,7 +171,7 @@ export default function DhkpPublicPage() {
                     <div className="p-5 grid grid-cols-2 md:grid-cols-3 gap-3 bg-background">
                         {!statsLoading && Object.entries(kadusStats).sort().map(([kadus, stats]) => (
                             <div key={kadus} className="flex flex-col p-3 bg-muted/40 rounded-xl border border-border/50">
-                                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{kadus}</span>
+                                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">• Kadus {kadus}</span>
                                 <span className="font-bold text-foreground mt-1">{stats.count} DHKP</span>
                                 <span className="text-xs text-muted-foreground">Rp {stats.amount.toLocaleString('id-ID')}</span>
                             </div>
@@ -228,6 +230,12 @@ export default function DhkpPublicPage() {
                                         <div className="font-extrabold text-xl text-primary">
                                             Rp {item.ketetapan.toLocaleString('id-ID')}
                                         </div>
+                                        {(item.luas_bumi > 0 || item.luas_bangunan > 0) && (
+                                            <div className="flex gap-3 mt-2 text-xs text-muted-foreground md:justify-end">
+                                                {item.luas_bumi > 0 && <span>Tanah: <strong className="text-foreground">{item.luas_bumi.toLocaleString('id-ID')} m²</strong></span>}
+                                                {item.luas_bangunan > 0 && <span>Bgn: <strong className="text-foreground">{item.luas_bangunan.toLocaleString('id-ID')} m²</strong></span>}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))
