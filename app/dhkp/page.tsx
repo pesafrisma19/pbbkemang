@@ -11,6 +11,7 @@ type DhkpRecord = {
     id: string;
     nop: string;
     nama_wp: string;
+    alamat_wp: string;
     alamat_op: string;
     ketetapan: number;
     kadus: string | null;
@@ -87,7 +88,7 @@ export default function DhkpPublicPage() {
     const fetchDhkpData = useCallback(async () => {
         setIsLoading(true)
         try {
-            let query = supabase.from('dhkp_records').select('id, nop, nama_wp, alamat_op, ketetapan, kadus, blok, persil, kelas, luas_bumi, luas_bangunan', { count: 'exact' })
+            let query = supabase.from('dhkp_records').select('id, nop, nama_wp, alamat_wp, alamat_op, ketetapan, kadus, blok, persil, kelas, luas_bumi, luas_bangunan', { count: 'exact' })
 
             if (dhkpQuery) {
                 query = query.or(`nop.ilike.%${dhkpQuery}%,nama_wp.ilike.%${dhkpQuery}%,alamat_op.ilike.%${dhkpQuery}%`)
@@ -210,12 +211,24 @@ export default function DhkpPublicPage() {
                                         <div className="text-sm font-mono text-muted-foreground mb-2 bg-muted inline-block px-2 py-0.5 rounded">
                                             {item.nop}
                                         </div>
-                                        <div className="text-sm text-foreground/80 flex items-start gap-2 mb-1">
-                                            <MapPin size={16} className="mt-0.5 text-primary shrink-0" />
-                                            <span>
-                                                {item.alamat_op}
-                                                {item.kadus && <span className="text-muted-foreground"> • Kadus {item.kadus}</span>}
-                                            </span>
+                                        <div className="space-y-2 mb-2">
+                                            <div className="text-sm text-foreground/80 flex items-start gap-2">
+                                                <MapPin size={16} className="mt-0.5 text-primary shrink-0" />
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Alamat WP (Pemilik)</span>
+                                                    <span>{item.alamat_wp || '-'}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-sm text-foreground/80 flex items-start gap-2">
+                                                <MapPin size={16} className="mt-0.5 text-orange-500 shrink-0" />
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Lokasi OP (Objek Pajak)</span>
+                                                    <span>
+                                                        {item.alamat_op || '-'}
+                                                        {item.kadus && <span className="text-muted-foreground"> • Kadus {item.kadus}</span>}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                         {(item.blok || item.persil || item.kelas) && (
                                             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -230,12 +243,10 @@ export default function DhkpPublicPage() {
                                         <div className="font-extrabold text-xl text-primary">
                                             Rp {item.ketetapan.toLocaleString('id-ID')}
                                         </div>
-                                        {(item.luas_bumi > 0 || item.luas_bangunan > 0) && (
-                                            <div className="flex gap-3 mt-2 text-xs text-muted-foreground md:justify-end">
-                                                {item.luas_bumi > 0 && <span>Tanah: <strong className="text-foreground">{item.luas_bumi.toLocaleString('id-ID')} m²</strong></span>}
-                                                {item.luas_bangunan > 0 && <span>Bgn: <strong className="text-foreground">{item.luas_bangunan.toLocaleString('id-ID')} m²</strong></span>}
-                                            </div>
-                                        )}
+                                        <div className="flex gap-3 mt-2 text-xs text-muted-foreground md:justify-end">
+                                            <span>Luas Tanah: <strong className="text-foreground">{item.luas_bumi?.toLocaleString('id-ID') || 0} m²</strong></span>
+                                            {item.luas_bangunan > 0 && <span>Bgn: <strong className="text-foreground">{item.luas_bangunan.toLocaleString('id-ID')} m²</strong></span>}
+                                        </div>
                                     </div>
                                 </div>
                             ))

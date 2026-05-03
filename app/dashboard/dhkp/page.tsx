@@ -427,7 +427,9 @@ export default function DhkpAdminPage() {
                             <tr>
                                 <th className="px-4 py-3 font-semibold">NOP</th>
                                 <th className="px-4 py-3 font-semibold">Nama WP (Lama)</th>
+                                <th className="px-4 py-3 font-semibold">Alamat WP</th>
                                 <th className="px-4 py-3 font-semibold">Lokasi OP</th>
+                                <th className="px-4 py-3 font-semibold text-center">Luas Tanah / Bgn</th>
                                 <th className="px-4 py-3 font-semibold">Blok / Persil</th>
                                 <th className="px-4 py-3 font-semibold text-right">Ketetapan</th>
                                 <th className="px-4 py-3 font-semibold text-center w-16"></th>
@@ -439,10 +441,19 @@ export default function DhkpAdminPage() {
                                     <td className="px-4 py-3 font-mono text-xs">{record.nop}</td>
                                     <td className="px-4 py-3 font-semibold">{record.nama_wp}</td>
                                     <td className="px-4 py-3">
+                                        <div className="truncate max-w-[200px]" title={record.alamat_wp}>
+                                            {record.alamat_wp || '-'}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
                                         <div className="truncate max-w-[200px]" title={record.alamat_op}>
                                             {record.alamat_op}
                                         </div>
                                         <div className="text-[10px] text-muted-foreground">RT/RW: {record.rt_op || '-'}/{record.rw_op || '-'}</div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-xs whitespace-nowrap">
+                                        <div className="font-medium text-foreground">{record.luas_bumi} m²</div>
+                                        <div className="text-[10px] text-muted-foreground">{record.luas_bangunan} m²</div>
                                     </td>
                                     <td className="px-4 py-3">
                                         {record.blok || record.persil || record.kelas ? (
@@ -471,7 +482,7 @@ export default function DhkpAdminPage() {
                             ))}
                             {dhkpResults.length === 0 && !isLoading && (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                                         Tidak ada data DHKP yang ditemukan.
                                     </td>
                                 </tr>
