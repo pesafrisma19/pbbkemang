@@ -235,8 +235,8 @@ export default function DhkpAdminPage() {
                             alamat_op: row['ALAMAT OP'] || row['ALAMAT_OP'] || '',
                             rt_op: row['RT OP'] ? String(row['RT OP']).trim() : null,
                             rw_op: row['RW OP'] ? String(row['RW OP']).trim() : null,
-                            luas_bumi: Number(row['LUAS BUMI']) || 0,
-                            luas_bangunan: Number(row['LUAS BANGUNAN']) || 0,
+                            luas_bumi: Number(row['LUAS BUMI'] || row['LUAS_BUMI'] || row['LUAS']) || 0,
+                            luas_bangunan: Number(row['LUAS BANGUNAN'] || row['LUAS_BANGUNAN'] || row['BGN']) || 0,
                             ketetapan: nominal,
                             tahun_pajak: row['TAHUN PAJAK'] ? String(row['TAHUN PAJAK']) : new Date().getFullYear().toString(),
 
