@@ -123,6 +123,22 @@ export default function DhkpPublicPage() {
         setCurrentPage(1)
     }
 
+    const renderJenisTanahBadge = (item: DhkpRecord) => {
+        if (!item.luas_bumi || !item.ketetapan) return null;
+        
+        if (item.luas_bangunan > 0) {
+            return <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 px-2 py-0.5 rounded text-xs font-medium border border-amber-200 dark:border-amber-800 ml-2">Darat</span>;
+        }
+
+        const tarif = item.ketetapan / item.luas_bumi;
+        
+        if (tarif >= 13 && tarif <= 25) {
+            return <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 px-2 py-0.5 rounded text-xs font-medium border border-emerald-200 dark:border-emerald-800 ml-2">Sawah</span>;
+        } else {
+            return <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 px-2 py-0.5 rounded text-xs font-medium border border-amber-200 dark:border-amber-800 ml-2">Darat</span>;
+        }
+    }
+
     return (
         <div className="min-h-screen bg-background text-foreground pb-20">
             {/* Simple Header */}
@@ -207,7 +223,10 @@ export default function DhkpPublicPage() {
                             dhkpResults.map((item) => (
                                 <div key={item.id} className="bg-card p-5 rounded-2xl border border-border hover:border-primary/50 transition-colors group shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                     <div className="flex-1">
-                                        <h3 className="font-bold text-lg text-foreground mb-2">{item.nama_wp}</h3>
+                                        <h3 className="font-bold text-lg text-foreground mb-2 flex items-center">
+                                            {item.nama_wp}
+                                            {renderJenisTanahBadge(item)}
+                                        </h3>
                                         <div className="text-sm font-mono text-muted-foreground mb-2 bg-muted inline-block px-2 py-0.5 rounded">
                                             {item.nop}
                                         </div>

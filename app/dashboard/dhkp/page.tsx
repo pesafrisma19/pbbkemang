@@ -97,6 +97,22 @@ export default function DhkpAdminPage() {
         setCurrentPage(1)
     }
 
+    const renderJenisTanahBadge = (item: DhkpRecord) => {
+        if (!item.luas_bumi || !item.ketetapan) return null;
+        
+        if (item.luas_bangunan > 0) {
+            return <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-medium border border-amber-200 dark:border-amber-800 inline-block mt-1">Darat</span>;
+        }
+
+        const tarif = item.ketetapan / item.luas_bumi;
+        
+        if (tarif >= 13 && tarif <= 25) {
+            return <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[10px] font-medium border border-emerald-200 dark:border-emerald-800 inline-block mt-1">Sawah</span>;
+        } else {
+            return <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-medium border border-amber-200 dark:border-amber-800 inline-block mt-1">Darat</span>;
+        }
+    }
+
     // Delete handler
     const confirmDelete = (id: string, nop: string, nama: string) => {
         setDeleteTarget({ id, nop, nama })
@@ -439,7 +455,10 @@ export default function DhkpAdminPage() {
                             {dhkpResults.map((record) => (
                                 <tr key={record.id} className="hover:bg-muted/30 transition-colors">
                                     <td className="px-4 py-3 font-mono text-xs">{record.nop}</td>
-                                    <td className="px-4 py-3 font-semibold">{record.nama_wp}</td>
+                                    <td className="px-4 py-3">
+                                        <div className="font-semibold">{record.nama_wp}</div>
+                                        {renderJenisTanahBadge(record)}
+                                    </td>
                                     <td className="px-4 py-3">
                                         <div className="truncate max-w-[200px]" title={record.alamat_wp}>
                                             {record.alamat_wp || '-'}
