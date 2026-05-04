@@ -45,6 +45,7 @@ export default function DhkpAdminPage() {
         updated: number;
         inserted: number;
         skipped: number;
+        duplicates: number;
         errors: string[];
     } | null>(null)
 
@@ -213,6 +214,7 @@ export default function DhkpAdminPage() {
                 let insertedCount = 0
                 let updatedCount = 0
                 let skippedCount = 0
+                let duplicateCount = 0
                 const errorLog: string[] = []
 
                 // Process in batches of 500 to prevent timeout
@@ -243,6 +245,9 @@ export default function DhkpAdminPage() {
                     // Hapus duplikat NOP di dalam batch yang sama sebelum dikirim ke database
                     const uniqueUpsertMap = new Map();
                     for (const item of upsertData) {
+                        if (uniqueUpsertMap.has(item.nop)) {
+                            duplicateCount++;
+                        }
                         uniqueUpsertMap.set(item.nop, item);
                     }
                     const uniqueUpsertData = Array.from(uniqueUpsertMap.values());
@@ -336,6 +341,7 @@ export default function DhkpAdminPage() {
                     inserted: insertedCount,
                     updated: updatedCount,
                     skipped: skippedCount,
+                    duplicates: duplicateCount,
                     errors: errorLog
                 })
                 setIsResultModalOpen(true)
@@ -348,6 +354,7 @@ export default function DhkpAdminPage() {
                     inserted: 0,
                     updated: 0,
                     skipped: 0,
+                    duplicates: 0,
                     errors: [String(err)]
                 })
                 setIsResultModalOpen(true)
@@ -565,7 +572,7 @@ export default function DhkpAdminPage() {
                                     <p className="text-sm opacity-90">Data DHKP berhasil disinkronisasi.</p>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3 mt-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
                                 <div className="p-3 bg-muted rounded-lg text-center">
                                     <div className="text-2xl font-bold">{importResult.inserted}</div>
                                     <div className="text-xs text-muted-foreground">Data Baru</div>
@@ -573,6 +580,14 @@ export default function DhkpAdminPage() {
                                 <div className="p-3 bg-muted rounded-lg text-center">
                                     <div className="text-2xl font-bold">{importResult.updated}</div>
                                     <div className="text-xs text-muted-foreground">Data Diupdate</div>
+                                </div>
+                                <div className="p-3 bg-muted rounded-lg text-center border border-dashed border-border/50">
+                                    <div className="text-2xl font-bold text-muted-foreground">{importResult.skipped}</div>
+                                    <div className="text-xs text-muted-foreground">Baris Kosong</div>
+                                </div>
+                                <div className="p-3 bg-muted rounded-lg text-center border border-dashed border-warning/30 bg-warning/5">
+                                    <div className="text-2xl font-bold text-warning">{importResult.duplicates}</div>
+                                    <div className="text-xs text-muted-foreground">Data Ganda</div>
                                 </div>
                             </div>
                             {importResult.errors.length > 0 && (
