@@ -224,9 +224,9 @@ export default function DhkpAdminPage() {
 
                     for (const row of batch as any[]) {
                         const nopRaw = row['NOP'] ? String(row['NOP']).trim() : ""
-                        const nameRaw = row['NAMA WP'] || row['NAMA_WP']
-
-                        if (!nopRaw || !nameRaw) {
+                        
+                        // Syarat wajib hanya NOP saja (agar bisa upload Excel yang isinya cuma NOP dan Kadus)
+                        if (!nopRaw) {
                             skippedCount++;
                             continue;
                         }
@@ -234,75 +234,77 @@ export default function DhkpAdminPage() {
                         // Clean NOP (remove non-digits if needed, but preserve format)
                         const nopClean = nopRaw.replace(/[^0-9.-]/g, '');
 
-                        // Clean Tax amount
-                        const taxRaw = row['POKOK KETETAPAN'] || row['TOTAL/ESTIMASI TOTAL'] || row['TOTAL'] || row['KETETAPAN'];
-                        let nominal = 0;
-                        if (typeof taxRaw === 'number') {
-                            nominal = taxRaw;
-                        } else if (typeof taxRaw === 'string') {
-                            const cleanTax = taxRaw.replace(/rp/gi, '').replace(/\./g, '').replace(/\s/g, '').replace(/,/g, '.');
-                            nominal = Number(cleanTax) || 0;
-                        }
-
                         upsertData.push({
                             nop: nopClean,
-                            nama_wp: String(nameRaw).trim(),
-                            alamat_wp: row['ALAMAT WP'] || row['ALAMAT_WP'] || '',
-                            alamat_op: row['ALAMAT OP'] || row['ALAMAT_OP'] || '',
-                            rt_op: row['RT OP'] ? String(row['RT OP']).trim() : null,
-                            rw_op: row['RW OP'] ? String(row['RW OP']).trim() : null,
-                            luas_bumi: Number(row['LUAS BUMI'] || row['LUAS_BUMI'] || row['LUAS']) || 0,
-                            luas_bangunan: Number(row['LUAS BANGUNAN'] || row['LUAS_BANGUNAN'] || row['BGN']) || 0,
-                            ketetapan: nominal,
-                            tahun_pajak: row['TAHUN PAJAK'] ? String(row['TAHUN PAJAK']) : new Date().getFullYear().toString(),
-
-                            // Ambil data manual dari Excel jika ada
-                            blok_excel: row['BLOK'] ? String(row['BLOK']).trim() : null,
-                            persil_excel: row['PERSIL'] ? String(row['PERSIL']).trim() : null,
-                            kadus_excel: row['KADUS'] ? String(row['KADUS']).trim() : null,
-                            kelas_excel: row['KELAS'] ? String(row['KELAS']).trim() : null,
+                            raw_excel: row // Simpan raw data untuk di-merge nanti
                         });
                     }
 
                     if (upsertData.length > 0) {
-                        // Smart Upsert: Fetch existing records for this batch
+                        // Smart Upsert: Ambil SEMUA data lama dari database untuk mencegah penghapusan
                         const nops = upsertData.map(d => d.nop);
                         const { data: existingRecords } = await supabase
                             .from('dhkp_records')
-                            .select('nop, blok, persil, kadus, kelas')
+                            .select('*')
                             .in('nop', nops);
 
                         const existingMap = new Map();
                         existingRecords?.forEach(r => existingMap.set(r.nop, r));
 
-                        // Merge manual data so it's not overwritten by Excel
                         const finalBatch = upsertData.map(d => {
-                            const existing = existingMap.get(d.nop);
+                            const existing = existingMap.get(d.nop) || {};
+                            const row = d.raw_excel;
 
-                            // Ekstrak data excel, lalu buang field temporary
-                            const { blok_excel, persil_excel, kadus_excel, kelas_excel, ...rest } = d;
-
-                            if (existing) {
-                                updatedCount++;
-                                return {
-                                    ...rest,
-                                    // Jika di database sudah ada isinya, dan di excel kosong, pakai yang di database.
-                                    // Jika di excel ada isinya, pakai yang di excel (berguna untuk import pertama kali).
-                                    blok: existing.blok && !blok_excel ? existing.blok : blok_excel,
-                                    persil: existing.persil && !persil_excel ? existing.persil : persil_excel,
-                                    kadus: existing.kadus && !kadus_excel ? existing.kadus : kadus_excel,
-                                    kelas: existing.kelas && !kelas_excel ? existing.kelas : kelas_excel
-                                };
-                            } else {
-                                insertedCount++;
-                                return {
-                                    ...rest,
-                                    blok: blok_excel,
-                                    persil: persil_excel,
-                                    kadus: kadus_excel,
-                                    kelas: kelas_excel
-                                };
+                            const nameRaw = row['NAMA WP'] || row['NAMA_WP'];
+                            const taxRaw = row['POKOK KETETAPAN'] || row['TOTAL/ESTIMASI TOTAL'] || row['TOTAL'] || row['KETETAPAN'];
+                            
+                            let nominal = undefined;
+                            if (taxRaw !== undefined && taxRaw !== '') {
+                                if (typeof taxRaw === 'number') {
+                                    nominal = taxRaw;
+                                } else {
+                                    const cleanTax = String(taxRaw).replace(/rp/gi, '').replace(/\./g, '').replace(/\s/g, '').replace(/,/g, '.');
+                                    nominal = Number(cleanTax) || 0;
+                                }
                             }
+
+                            // Fungsi Helper: Cek apakah kolom benar-benar ada dan tidak kosong di Excel
+                            const getVal = (key1: string, key2?: string, key3?: string) => {
+                                if (row[key1] !== undefined && row[key1] !== '') return row[key1];
+                                if (key2 && row[key2] !== undefined && row[key2] !== '') return row[key2];
+                                if (key3 && row[key3] !== undefined && row[key3] !== '') return row[key3];
+                                return undefined;
+                            };
+
+                            const alamatWp = getVal('ALAMAT WP', 'ALAMAT_WP');
+                            const alamatOp = getVal('ALAMAT OP', 'ALAMAT_OP');
+                            const rtOp = getVal('RT OP');
+                            const rwOp = getVal('RW OP');
+                            const luasBumi = getVal('LUAS BUMI', 'LUAS_BUMI', 'LUAS');
+                            const luasBgn = getVal('LUAS BANGUNAN', 'LUAS_BANGUNAN', 'BGN');
+                            const tahunPajak = getVal('TAHUN PAJAK');
+                            const blok = getVal('BLOK');
+                            const persil = getVal('PERSIL');
+                            const kadus = getVal('KADUS');
+                            const kelas = getVal('KELAS');
+
+                            return {
+                                nop: d.nop,
+                                // Jika di Excel ada, pakai Excel. Jika kosong, pertahankan data lama (existing).
+                                nama_wp: nameRaw ? String(nameRaw).trim() : (existing.nama_wp || "-"),
+                                alamat_wp: alamatWp !== undefined ? String(alamatWp) : (existing.alamat_wp || ''),
+                                alamat_op: alamatOp !== undefined ? String(alamatOp) : (existing.alamat_op || ''),
+                                rt_op: rtOp !== undefined ? String(rtOp).trim() : (existing.rt_op || null),
+                                rw_op: rwOp !== undefined ? String(rwOp).trim() : (existing.rw_op || null),
+                                luas_bumi: luasBumi !== undefined ? Number(luasBumi) : (existing.luas_bumi || 0),
+                                luas_bangunan: luasBgn !== undefined ? Number(luasBgn) : (existing.luas_bangunan || 0),
+                                ketetapan: nominal !== undefined ? nominal : (existing.ketetapan || 0),
+                                tahun_pajak: tahunPajak !== undefined ? String(tahunPajak) : (existing.tahun_pajak || new Date().getFullYear().toString()),
+                                blok: blok !== undefined ? String(blok).trim() : (existing.blok || null),
+                                persil: persil !== undefined ? String(persil).trim() : (existing.persil || null),
+                                kadus: kadus !== undefined ? String(kadus).trim() : (existing.kadus || null),
+                                kelas: kelas !== undefined ? String(kelas).trim() : (existing.kelas || null)
+                            };
                         });
 
                         // Do upsert
