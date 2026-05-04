@@ -259,7 +259,13 @@ export default function DhkpAdminPage() {
                         existingRecords?.forEach(r => existingMap.set(r.nop, r));
 
                         const finalBatch = uniqueUpsertData.map(d => {
-                            const existing = existingMap.get(d.nop) || {};
+                            const existingData = existingMap.get(d.nop);
+                            if (existingData) {
+                                updatedCount++;
+                            } else {
+                                insertedCount++;
+                            }
+                            const existing = existingData || {};
                             const row = d.raw_excel;
 
                             const nameRaw = row['NAMA WP'] || row['NAMA_WP'];
