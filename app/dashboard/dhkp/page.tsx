@@ -240,9 +240,16 @@ export default function DhkpAdminPage() {
                         });
                     }
 
-                    if (upsertData.length > 0) {
+                    // Hapus duplikat NOP di dalam batch yang sama sebelum dikirim ke database
+                    const uniqueUpsertMap = new Map();
+                    for (const item of upsertData) {
+                        uniqueUpsertMap.set(item.nop, item);
+                    }
+                    const uniqueUpsertData = Array.from(uniqueUpsertMap.values());
+
+                    if (uniqueUpsertData.length > 0) {
                         // Smart Upsert: Ambil SEMUA data lama dari database untuk mencegah penghapusan
-                        const nops = upsertData.map(d => d.nop);
+                        const nops = uniqueUpsertData.map(d => d.nop);
                         const { data: existingRecords } = await supabase
                             .from('dhkp_records')
                             .select('*')
@@ -251,7 +258,7 @@ export default function DhkpAdminPage() {
                         const existingMap = new Map();
                         existingRecords?.forEach(r => existingMap.set(r.nop, r));
 
-                        const finalBatch = upsertData.map(d => {
+                        const finalBatch = uniqueUpsertData.map(d => {
                             const existing = existingMap.get(d.nop) || {};
                             const row = d.raw_excel;
 
