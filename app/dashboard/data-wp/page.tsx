@@ -100,26 +100,24 @@ export default function DataWPPage() {
     const itemsPerPage = 10
 
     const [localData, setLocalData] = useState<WPData[]>([])
-    const [filterKampung, setFilterKampung] = useState<string | null>(null)
     const [filterRW, setFilterRW] = useState<string | null>(null)
-    const [filterRT, setFilterRT] = useState<string | null>(null)
+    const [filterArea, setFilterArea] = useState<string | null>(null)
 
-    // Extract unique kampungs dynamically
-    const uniqueKampungs = Array.from(new Set(localData.map(wp => wp.address))).filter(Boolean).sort()
+    // Extract unique RW dynamically
+    const uniqueRWs = Array.from(new Set(localData.map(wp => wp.rw))).filter(Boolean).sort((a, b) => Number(a) - Number(b))
     
-    // Extract unique RW dynamically based on selected kampung
-    const uniqueRWs = Array.from(new Set(localData.filter(wp => !filterKampung || wp.address === filterKampung).map(wp => wp.rw))).filter(Boolean).sort((a, b) => Number(a) - Number(b))
-    
-    // Extract unique RT dynamically based on selected kampung and RW
-    const uniqueRTs = Array.from(new Set(localData.filter(wp => (!filterKampung || wp.address === filterKampung) && (!filterRW || wp.rw === filterRW)).map(wp => wp.rt))).filter(Boolean).sort((a, b) => Number(a) - Number(b))
+    // Extract unique Area (Kampung RT/RW) dynamically based on selected RW
+    const uniqueAreas = Array.from(new Set(
+        localData
+            .filter(wp => !filterRW || wp.rw === filterRW)
+            .map(wp => {
+                if (!wp.rt || !wp.rw) return null;
+                return `${wp.address} RT ${wp.rt}/${wp.rw}`;
+            })
+    )).filter(Boolean).sort()
 
     useEffect(() => {
-        setFilterRW(null)
-        setFilterRT(null)
-    }, [filterKampung])
-
-    useEffect(() => {
-        setFilterRT(null)
+        setFilterArea(null)
     }, [filterRW])
 
     // 1. Tentukan keluarga mana saja yang memiliki minimal 1 anggota yang cocok dengan pencarian
@@ -144,12 +142,13 @@ export default function DataWPPage() {
         })
     }
 
-    // 2. Saring data berdasarkan Kampung, RW, RT & Hasil Pencarian
+    // 2. Saring data berdasarkan RW, Area & Hasil Pencarian
     const filteredData = localData.filter(wp => {
-        const matchKampung = filterKampung ? wp.address === filterKampung : true;
         const matchRW = filterRW ? wp.rw === filterRW : true;
-        const matchRT = filterRT ? wp.rt === filterRT : true;
-        if (!matchKampung || !matchRW || !matchRT) return false;
+        const wpArea = (wp.rt && wp.rw) ? `${wp.address} RT ${wp.rt}/${wp.rw}` : null;
+        const matchArea = filterArea ? wpArea === filterArea : true;
+        
+        if (!matchRW || !matchArea) return false;
 
         if (!lowerSearch) return true; // Tidak ada pencarian, loloskan semua
 
@@ -209,7 +208,7 @@ export default function DataWPPage() {
     // Reset page when search changes
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchTerm, filterKampung, filterRW, filterRT])
+    }, [searchTerm, filterRW, filterArea])
 
     // --- Excel Handling ---
 
@@ -885,19 +884,19 @@ export default function DataWPPage() {
                     <div className="space-y-4 pt-3 border-t border-border mt-2">
                         {members.map(wp => (
                             <div key={wp.id} className="bg-background rounded-xl border border-border/50 p-4 shadow-sm">
-                                <div className="flex justify-between items-start border-b pb-3 mb-3">
-                                    <div>
-                                        <p className="font-semibold text-sm">{wp.name}</p>
-                                        <div className="flex gap-4 text-xs text-muted-foreground mt-1">
-                                            <span className="flex items-center gap-1"><Phone size={10} /> {wp.whatsapp || "-"}</span>
-                                            <span>NIK: {wp.nik || "-"}</span>
+                                <div className="flex flex-col sm:flex-row justify-between items-start border-b pb-3 mb-3 bg-muted/20 -mx-4 -mt-4 p-4 rounded-t-xl gap-3">
+                                    <div className="flex-1 w-full">
+                                        <p className="font-semibold text-sm line-clamp-1">{wp.name}</p>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
+                                            <span className="flex items-center gap-1 shrink-0"><Phone size={10} /> {wp.whatsapp || "-"}</span>
+                                            <span className="shrink-0">NIK: {wp.nik || "-"}</span>
                                         </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-2">
                                         <span className="font-bold text-sm">Rp {wp.total_tax.toLocaleString('id-ID')}</span>
-                                        <div className="flex justify-end gap-2 mt-2">
-                                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); handleEditClick(wp) }}>Edit</Button>
-                                            <Button size="sm" variant="danger" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); confirmDelete(wp.id, wp.name) }}>Hapus</Button>
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="outline" className="h-7 px-3 text-xs" onClick={(e) => { e.stopPropagation(); handleEditClick(wp) }}>Edit</Button>
+                                            <Button size="sm" variant="danger" className="h-7 px-3 text-xs" onClick={(e) => { e.stopPropagation(); confirmDelete(wp.id, wp.name) }}>Hapus</Button>
                                         </div>
                                     </div>
                                 </div>
@@ -1052,80 +1051,34 @@ export default function DataWPPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-                {/* Kampung, RW, RT Filters */}
-                <div className="flex flex-col gap-2">
-                    {uniqueKampungs.length > 0 && (
-                        <div className="flex flex-wrap gap-2 items-center">
-                            <span className="text-sm font-semibold mr-2 text-muted-foreground w-20">Kampung:</span>
-                            <Button
-                                variant={filterKampung === null ? "primary" : "outline"}
-                                size="sm"
-                                className="h-8 rounded-full"
-                                onClick={() => setFilterKampung(null)}
-                            >
-                                <X size={14} className="mr-1" /> Semua
-                            </Button>
-                            {uniqueKampungs.map(k => (
-                                <Button
-                                    key={String(k)}
-                                    variant={filterKampung === k ? "primary" : "outline"}
-                                    size="sm"
-                                    className="h-8 rounded-full"
-                                    onClick={() => setFilterKampung(String(k))}
-                                >
-                                    {String(k)}
-                                </Button>
-                            ))}
-                        </div>
-                    )}
-                    {uniqueRWs.length > 0 && (
-                        <div className="flex flex-wrap gap-2 items-center">
-                            <span className="text-sm font-semibold mr-2 text-muted-foreground w-20">RW:</span>
-                            <Button
-                                variant={filterRW === null ? "primary" : "outline"}
-                                size="sm"
-                                className="h-8 rounded-full"
-                                onClick={() => setFilterRW(null)}
-                            >
-                                <X size={14} className="mr-1" /> Semua
-                            </Button>
-                            {uniqueRWs.map(rw => (
-                                <Button
-                                    key={String(rw)}
-                                    variant={filterRW === rw ? "primary" : "outline"}
-                                    size="sm"
-                                    className="h-8 rounded-full"
-                                    onClick={() => setFilterRW(String(rw))}
-                                >
-                                    {String(rw)}
-                                </Button>
-                            ))}
-                        </div>
-                    )}
-                    {uniqueRTs.length > 0 && (
-                        <div className="flex flex-wrap gap-2 items-center">
-                            <span className="text-sm font-semibold mr-2 text-muted-foreground w-20">RT:</span>
-                            <Button
-                                variant={filterRT === null ? "primary" : "outline"}
-                                size="sm"
-                                className="h-8 rounded-full"
-                                onClick={() => setFilterRT(null)}
-                            >
-                                <X size={14} className="mr-1" /> Semua
-                            </Button>
-                            {uniqueRTs.map(rt => (
-                                <Button
-                                    key={String(rt)}
-                                    variant={filterRT === rt ? "primary" : "outline"}
-                                    size="sm"
-                                    className="h-8 rounded-full"
-                                    onClick={() => setFilterRT(String(rt))}
-                                >
-                                    {String(rt)}
-                                </Button>
-                            ))}
-                        </div>
-                    )}
+                {/* Filter Area Dropdowns */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                    {/* RW Dropdown */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground ml-1">Filter RW</label>
+                        <select 
+                            className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer"
+                            value={filterRW || ""}
+                            onChange={(e) => setFilterRW(e.target.value || null)}
+                        >
+                            <option value="">Semua RW</option>
+                            {uniqueRWs.map(rw => <option key={String(rw)} value={String(rw)}>RW {String(rw)}</option>)}
+                        </select>
+                    </div>
+
+                    {/* Area (RT) Dropdown */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground ml-1">Spesifik Area / RT</label>
+                        <select 
+                            className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer disabled:opacity-50"
+                            value={filterArea || ""}
+                            onChange={(e) => setFilterArea(e.target.value || null)}
+                            disabled={uniqueAreas.length === 0}
+                        >
+                            <option value="">Semua Area</option>
+                            {uniqueAreas.map(area => <option key={String(area)} value={String(area)}>{String(area)}</option>)}
+                        </select>
+                    </div>
                 </div>
 
                 <div className="glass-card p-4 rounded-xl flex items-center gap-4">
