@@ -1461,6 +1461,7 @@ export default function DataWPPage() {
                                                 {dhkpMatch.loading && <Loader2 className="h-4 w-4 absolute right-3 top-2.5 animate-spin text-muted-foreground" />}
                                             </div>
                                         )}
+                                    </div>
                                     {useFastNop && (
                                         <p className="text-[10px] text-muted-foreground">
                                             *Otomatis prefix: 3205130005000 & suffix: 7
