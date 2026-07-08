@@ -71,6 +71,10 @@ export default function DataWPPage() {
     const [showAssetForm, setShowAssetForm] = useState(false)
     const [useFastNop, setUseFastNop] = useState(true)
 
+    // DHKP Reconciliation State
+    const [dhkpMatch, setDhkpMatch] = useState<{ found: boolean, ketetapan?: number, data?: any, loading: boolean }>({ found: false, loading: false })
+    const [nopAllocations, setNopAllocations] = useState<{ totalAssigned: number, owners: any[] }>({ totalAssigned: 0, owners: [] })
+
     // Import Result State
     const [isResultModalOpen, setIsResultModalOpen] = useState(false)
     const [importResult, setImportResult] = useState<{
@@ -661,9 +665,72 @@ export default function DataWPPage() {
         setFormData({ name: "", address: "", nik: "", whatsapp: "", group_id: "", rt: "", rw: "" })
         setFormAssets([])
         setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
-        setShowAssetForm(false)
         setEditingId(null)
         setEditingAssetIndex(null)
+        setShowAssetForm(false)
+        setDhkpMatch({ found: false, loading: false })
+        setNopAllocations({ totalAssigned: 0, owners: [] })
+    }
+
+    const checkNopDhkp = async (nopToCheck: string) => {
+        const cleanNop = nopToCheck.replace(/\D/g, '')
+        if (!cleanNop || cleanNop.length < 18) {
+            setDhkpMatch({ found: false, loading: false })
+            setNopAllocations({ totalAssigned: 0, owners: [] })
+            return;
+        }
+
+        setDhkpMatch(prev => ({ ...prev, loading: true }))
+        try {
+            // 1. Cek di DHKP
+            const { data: dhkpData, error } = await supabase
+                .from('dhkp_records')
+                .select('*')
+                .eq('nop', cleanNop)
+                .single()
+            
+            if (error && error.code !== 'PGRST116') throw error; // PGRST116 is not found
+
+            if (dhkpData) {
+                // Auto-fill form fields, but NEVER touch newAsset.tax
+                setNewAsset(prev => ({
+                    ...prev,
+                    loc: prev.loc || dhkpData.alamat_op || "",
+                    original_name: prev.original_name || dhkpData.nama_wp || "",
+                    blok: prev.blok || dhkpData.blok || "",
+                    persil: prev.persil || dhkpData.persil || ""
+                }))
+
+                // 2. Hitung alokasi dari wp lokal (termasuk formAsset saat ini jika bukan edit)
+                let owners = nopOwnersMap[cleanNop] || []
+                
+                // Kurangi dari totalAssigned jika sedang mengedit asset yang sudah ada (menghindari double count)
+                if (editingId && editingAssetIndex !== null) {
+                   const originalAsset = localData.find(w => w.id === editingId)?.assets[editingAssetIndex];
+                   if (originalAsset && originalAsset.nop === cleanNop) {
+                       owners = owners.filter(o => !(o.name === formData.name && o.tax === originalAsset.tax));
+                   }
+                }
+                
+                // Tambahkan asset lain di form formAssets yang belum disave ke db
+                formAssets.forEach((fa, idx) => {
+                    if (idx !== editingAssetIndex && fa.nop === cleanNop) {
+                        owners = [...owners, { name: "Form (Belum Disimpan)", address: "-", tax: fa.tax }]
+                    }
+                })
+
+                const totalAssigned = owners.reduce((sum, o) => sum + o.tax, 0);
+
+                setDhkpMatch({ found: true, ketetapan: dhkpData.ketetapan, data: dhkpData, loading: false })
+                setNopAllocations({ totalAssigned, owners })
+            } else {
+                setDhkpMatch({ found: false, loading: false })
+                setNopAllocations({ totalAssigned: 0, owners: [] })
+            }
+        } catch (err) {
+            console.error("Error checking DHKP:", err)
+            setDhkpMatch({ found: false, loading: false })
+        }
     }
 
     const handleAddAsset = () => {
@@ -1331,7 +1398,7 @@ export default function DataWPPage() {
                                     </div>
                                     <div className="relative">
                                         {useFastNop ? (
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 relative">
                                                 <div className="bg-muted px-2 py-1.5 rounded border text-sm text-muted-foreground font-mono select-none">
                                                     3205130005000
                                                 </div>
@@ -1340,28 +1407,38 @@ export default function DataWPPage() {
                                                     id="nopFast"
                                                     placeholder="1466"
                                                     className="h-9 text-sm font-mono flex-1"
-                                                    value={newAsset.nop.replace('3205130005000', '').slice(0, -1)}
+                                                    value={newAsset.nop.replace('3205130005000', '').replace(/7$/, '')}
                                                     onChange={(e) => {
                                                         const val = e.target.value.replace(/\D/g, '').substring(0, 4)
-                                                        // Logic: Prefix + Input + Suffix (7)
-                                                        setNewAsset({ ...newAsset, nop: `3205130005000${val}7` })
+                                                        const expanded = `3205130005000${val}7`
+                                                        setNewAsset({ ...newAsset, nop: expanded })
+                                                        if (val.length === 4) checkNopDhkp(expanded)
                                                     }}
+                                                    onBlur={() => checkNopDhkp(newAsset.nop)}
                                                 />
                                                 <div className="bg-muted px-2 py-1.5 rounded border text-sm text-muted-foreground font-mono select-none">
                                                     7
                                                 </div>
+                                                {dhkpMatch.loading && <Loader2 className="h-4 w-4 absolute right-12 top-2.5 animate-spin text-muted-foreground" />}
                                             </div>
                                         ) : (
-                                            <Input
-                                                name="nopManual"
-                                                id="nopManual"
-                                                placeholder="3205xxxxxxxxxxxxxx"
-                                                className="h-9 text-sm"
-                                                value={newAsset.nop}
-                                                onChange={(e) => setNewAsset({ ...newAsset, nop: e.target.value })}
-                                            />
+                                            <div className="relative">
+                                                <Input
+                                                    name="nopManual"
+                                                    id="nopManual"
+                                                    placeholder="3205xxxxxxxxxxxxxx"
+                                                    className="h-9 text-sm"
+                                                    value={newAsset.nop}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value
+                                                        setNewAsset({ ...newAsset, nop: val })
+                                                        if (val.replace(/\D/g, '').length >= 18) checkNopDhkp(val)
+                                                    }}
+                                                    onBlur={() => checkNopDhkp(newAsset.nop)}
+                                                />
+                                                {dhkpMatch.loading && <Loader2 className="h-4 w-4 absolute right-3 top-2.5 animate-spin text-muted-foreground" />}
+                                            </div>
                                         )}
-                                    </div>
                                     {useFastNop && (
                                         <p className="text-[10px] text-muted-foreground">
                                             *Otomatis prefix: 3205130005000 & suffix: 7
@@ -1402,6 +1479,46 @@ export default function DataWPPage() {
                                             onChange={(e) => setNewAsset({ ...newAsset, year: Number(e.target.value) })}
                                         />
                                     </div>
+
+                                    {/* Reconciliation Alert */}
+                                    {dhkpMatch.found && dhkpMatch.ketetapan !== undefined && (
+                                        <div className="bg-muted/30 border border-muted p-3 rounded-lg text-sm mt-1 col-span-2">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="font-semibold text-muted-foreground">Ketetapan DHKP:</span>
+                                                <span className="font-bold">Rp {dhkpMatch.ketetapan.toLocaleString('id-ID')}</span>
+                                            </div>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="text-muted-foreground">Total Dialokasikan:</span>
+                                                <span>Rp {nopAllocations.totalAssigned.toLocaleString('id-ID')}</span>
+                                            </div>
+                                            
+                                            <div className="border-t pt-2 mt-1">
+                                                {(() => {
+                                                    const currentInputTax = newAsset.tax || 0;
+                                                    const sisa = dhkpMatch.ketetapan - nopAllocations.totalAssigned - currentInputTax;
+                                                    
+                                                    if (sisa === 0) {
+                                                        return <div className="flex items-center gap-1 text-green-600 font-semibold"><div className="w-2 h-2 rounded-full bg-green-500"></div> PAS (Alokasi Sempurna)</div>;
+                                                    } else if (sisa > 0) {
+                                                        return <div className="flex flex-col"><div className="flex items-center gap-1 text-red-600 font-semibold"><AlertCircle size={14} /> KURANG Rp {sisa.toLocaleString('id-ID')}</div><span className="text-xs text-muted-foreground mt-0.5">Sisa tagihan DHKP belum dialokasikan ke Kikitir.</span></div>;
+                                                    } else {
+                                                        return <div className="flex flex-col"><div className="flex items-center gap-1 text-yellow-600 font-semibold"><AlertCircle size={14} /> LEBIH Rp {Math.abs(sisa).toLocaleString('id-ID')}</div><span className="text-xs text-muted-foreground mt-0.5">Peringatan: Total pecahan melebihi tagihan SPPT asli.</span></div>;
+                                                    }
+                                                })()}
+                                            </div>
+                                            
+                                            {nopAllocations.owners.length > 0 && (
+                                                <div className="mt-2 text-xs">
+                                                    <span className="font-medium text-muted-foreground block mb-1">Sudah Dipecah Ke:</span>
+                                                    <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                                                        {nopAllocations.owners.map((o, idx) => (
+                                                            <li key={idx}>{o.name} (Rp {o.tax.toLocaleString('id-ID')})</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* New Fields */}
                                     <div className="space-y-2 col-span-2 border-t pt-2 mt-1">
