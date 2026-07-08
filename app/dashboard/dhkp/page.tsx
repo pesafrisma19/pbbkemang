@@ -33,7 +33,12 @@ export default function DhkpAdminPage() {
     const [totalCount, setTotalCount] = useState(0)
     
     // Allocations State
-    const [allocations, setAllocations] = useState<Record<string, { total: number, count: number }>>({})
+    type OwnerAlloc = { name: string; amount: number; rt?: string; rw?: string; }
+    const [allocations, setAllocations] = useState<Record<string, { total: number, count: number, owners: OwnerAlloc[] }>>({})
+    
+    // Detail Modal State
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+    const [selectedDhkp, setSelectedDhkp] = useState<DhkpRecord | null>(null)
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1)
@@ -85,11 +90,11 @@ export default function DhkpAdminPage() {
                 const nops = data.map(d => String(d.nop))
                 const { data: allocData } = await supabase
                     .from('tax_objects')
-                    .select('nop, amount_due')
+                    .select('nop, amount_due, citizens(name, rt, rw)')
                     .in('nop', nops)
                 
-                const allocMap: Record<string, { total: number, count: number }> = {}
-                nops.forEach(n => allocMap[n] = { total: 0, count: 0 })
+                const allocMap: Record<string, { total: number, count: number, owners: OwnerAlloc[] }> = {}
+                nops.forEach(n => allocMap[n] = { total: 0, count: 0, owners: [] })
                 
                 if (allocData) {
                     allocData.forEach(a => {
@@ -97,6 +102,16 @@ export default function DhkpAdminPage() {
                         if (allocMap[strNop]) {
                             allocMap[strNop].total += (a.amount_due || 0)
                             allocMap[strNop].count += 1
+                            
+                            const citizenData = Array.isArray(a.citizens) ? a.citizens[0] : a.citizens;
+                            if (citizenData) {
+                                allocMap[strNop].owners.push({
+                                    name: citizenData.name,
+                                    amount: a.amount_due || 0,
+                                    rt: citizenData.rt,
+                                    rw: citizenData.rw
+                                })
+                            }
                         }
                     })
                 }
@@ -503,7 +518,14 @@ export default function DhkpAdminPage() {
                         </thead>
                         <tbody className="divide-y divide-border">
                             {dhkpResults.map((record) => (
-                                <tr key={record.id} className="hover:bg-muted/30 transition-colors">
+                                <tr 
+                                    key={record.id} 
+                                    className="hover:bg-muted/30 transition-colors cursor-pointer"
+                                    onClick={() => {
+                                        setSelectedDhkp(record)
+                                        setIsDetailModalOpen(true)
+                                    }}
+                                >
                                     <td className="px-4 py-3 font-mono text-xs">
                                         <div className="flex flex-col gap-1 items-start">
                                             <span>{record.nop}</span>
@@ -567,7 +589,10 @@ export default function DhkpAdminPage() {
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         <button
-                                            onClick={() => confirmDelete(record.id, record.nop, record.nama_wp)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                confirmDelete(record.id, record.nop, record.nama_wp)
+                                            }}
                                             className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-md hover:bg-destructive/10"
                                             title="Hapus data ini"
                                         >
@@ -614,6 +639,73 @@ export default function DhkpAdminPage() {
                     </div>
                 )}
             </div>
+
+            {/* Detail Allocation Modal */}
+            <Modal 
+                isOpen={isDetailModalOpen} 
+                onClose={() => { setIsDetailModalOpen(false); setSelectedDhkp(null); }} 
+                title="Rincian Pembagian SPPT"
+                footer={<Button onClick={() => setIsDetailModalOpen(false)}>Tutup</Button>}
+            >
+                {selectedDhkp && (
+                    <div className="space-y-4">
+                        <div className="bg-muted/30 p-4 rounded-xl border border-border">
+                            <h4 className="font-bold text-lg mb-1">{selectedDhkp.nama_wp}</h4>
+                            <div className="text-sm font-mono text-muted-foreground mb-2">{selectedDhkp.nop}</div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">Ketetapan DHKP:</span>
+                                <span className="font-bold text-foreground">Rp {selectedDhkp.ketetapan.toLocaleString('id-ID')}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="font-semibold text-sm mb-3">Telah Dibagikan Kepada:</h4>
+                            {(() => {
+                                const alloc = allocations[selectedDhkp.nop]
+                                if (!alloc || alloc.owners.length === 0) {
+                                    return <div className="text-center p-4 bg-muted/20 border border-dashed rounded-lg text-muted-foreground text-sm">Belum ada warga yang menerima Kikitir dari SPPT ini.</div>
+                                }
+                                
+                                return (
+                                    <div className="space-y-2">
+                                        {alloc.owners.map((owner, idx) => (
+                                            <div key={idx} className="flex justify-between items-center p-3 border rounded-lg bg-card shadow-sm">
+                                                <div>
+                                                    <div className="font-semibold text-sm">{owner.name}</div>
+                                                    {(owner.rt || owner.rw) && (
+                                                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                                                            RT {owner.rt || '-'}/RW {owner.rw || '-'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="font-bold text-sm text-primary">
+                                                    Rp {owner.amount.toLocaleString('id-ID')}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
+                            })()}
+                        </div>
+
+                        {(() => {
+                            const alloc = allocations[selectedDhkp.nop]
+                            if (!alloc) return null;
+                            const sisa = selectedDhkp.ketetapan - alloc.total;
+                            return (
+                                <div className={`p-4 rounded-xl flex justify-between items-center mt-2 ${sisa === 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' : sisa > 0 ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'}`}>
+                                    <span className={`text-sm font-bold ${sisa === 0 ? 'text-emerald-700 dark:text-emerald-400' : sisa > 0 ? 'text-red-700 dark:text-red-400' : 'text-blue-700 dark:text-blue-400'}`}>
+                                        {sisa === 0 ? '✓ Alokasi Sempurna (PAS)' : sisa > 0 ? '⚠️ Kekurangan / Belum Terbagi' : 'Kelebihan / Over Alokasi'}
+                                    </span>
+                                    <span className={`font-bold text-lg ${sisa === 0 ? 'text-emerald-700 dark:text-emerald-400' : sisa > 0 ? 'text-red-700 dark:text-red-400' : 'text-blue-700 dark:text-blue-400'}`}>
+                                        Rp {Math.abs(sisa).toLocaleString('id-ID')}
+                                    </span>
+                                </div>
+                            )
+                        })()}
+                    </div>
+                )}
+            </Modal>
 
             {/* Import Result Modal */}
             <Modal isOpen={isResultModalOpen} onClose={() => setIsResultModalOpen(false)} title="Hasil Import DHKP">
