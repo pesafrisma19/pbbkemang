@@ -21,6 +21,7 @@ type Asset = {
     original_name?: string; // New: Nama Asal
     persil?: string; // New: Persil
     blok?: string; // New: Blok
+    kelas?: string; // New: Kelas
 }
 
 type WPData = {
@@ -109,7 +110,7 @@ export default function DataWPPage() {
 
     // Extract unique RW dynamically
     const uniqueRWs = Array.from(new Set(localData.map(wp => wp.rw))).filter(Boolean).sort((a, b) => Number(a) - Number(b))
-    
+
     // Mengecek apakah ada data yang RW-nya kosong
     const hasEmptyRW = localData.some(wp => !wp.rw)
     // Mengecek apakah ada data yang RT/RW-nya kosong (untuk filter Area)
@@ -147,7 +148,7 @@ export default function DataWPPage() {
                     (a.persil && a.persil.toLowerCase().includes(lowerSearch)) ||
                     (a.blok && a.blok.toLowerCase().includes(lowerSearch))
                 )
-            
+
             if (matchSearch && wp.group_id) {
                 matchedGroupKeys.add(`${wp.group_id}-${wp.address}`)
             }
@@ -167,7 +168,7 @@ export default function DataWPPage() {
             if (filterArea === 'KOSONG') matchArea = !wp.rt || !wp.rw;
             else matchArea = (wp.rt && wp.rw) ? `RT ${wp.rt}/${wp.rw}` === filterArea : false;
         }
-        
+
         if (!matchRW || !matchArea) return false;
 
         if (!lowerSearch) return true; // Tidak ada pencarian, loloskan semua
@@ -410,7 +411,7 @@ export default function DataWPPage() {
 
                     const name = String(nameRaw).trim()
                     const address = String(addressRaw).trim()
-                    
+
                     let nominal = 0;
                     if (typeof taxRaw === 'number') {
                         nominal = taxRaw;
@@ -627,7 +628,8 @@ export default function DataWPPage() {
                         status: obj.status,
                         original_name: obj.original_name,
                         persil: obj.persil,
-                        blok: obj.blok
+                        blok: obj.blok,
+                        kelas: obj.kelas
                     })) || []
                 }))
                 // Compute NOP Owners Map
@@ -664,7 +666,7 @@ export default function DataWPPage() {
     const resetForm = () => {
         setFormData({ name: "", address: "", nik: "", whatsapp: "", group_id: "", rt: "", rw: "" })
         setFormAssets([])
-        setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
+        setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "", kelas: "" })
         setEditingId(null)
         setEditingAssetIndex(null)
         setShowAssetForm(false)
@@ -688,30 +690,31 @@ export default function DataWPPage() {
                 .select('*')
                 .eq('nop', cleanNop)
                 .single()
-            
+
             if (error && error.code !== 'PGRST116') throw error; // PGRST116 is not found
 
             if (dhkpData) {
                 // Auto-fill form fields, but NEVER touch newAsset.tax
                 setNewAsset(prev => ({
                     ...prev,
-                    loc: prev.loc || dhkpData.alamat_op || "",
-                    original_name: prev.original_name || dhkpData.nama_wp || "",
-                    blok: prev.blok || dhkpData.blok || "",
-                    persil: prev.persil || dhkpData.persil || ""
+                    loc: dhkpData.alamat_op || prev.loc || "",
+                    original_name: dhkpData.nama_wp || prev.original_name || "",
+                    blok: dhkpData.blok || prev.blok || "",
+                    persil: dhkpData.persil || prev.persil || "",
+                    kelas: dhkpData.kelas || prev.kelas || ""
                 }))
 
                 // 2. Hitung alokasi dari wp lokal (termasuk formAsset saat ini jika bukan edit)
                 let owners = nopOwnersMap[cleanNop] || []
-                
+
                 // Kurangi dari totalAssigned jika sedang mengedit asset yang sudah ada (menghindari double count)
                 if (editingId && editingAssetIndex !== null) {
-                   const originalAsset = localData.find(w => w.id === editingId)?.assets[editingAssetIndex];
-                   if (originalAsset && originalAsset.nop === cleanNop) {
-                       owners = owners.filter(o => !(o.name === formData.name && o.tax === originalAsset.tax));
-                   }
+                    const originalAsset = localData.find(w => w.id === editingId)?.assets[editingAssetIndex];
+                    if (originalAsset && originalAsset.nop === cleanNop) {
+                        owners = owners.filter(o => !(o.name === formData.name && o.tax === originalAsset.tax));
+                    }
                 }
-                
+
                 // Tambahkan asset lain di form formAssets yang belum disave ke db
                 formAssets.forEach((fa, idx) => {
                     if (idx !== editingAssetIndex && fa.nop === cleanNop) {
@@ -758,7 +761,7 @@ export default function DataWPPage() {
             setFormAssets([...formAssets, assetToAdd])
         }
 
-        setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "" })
+        setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "", kelas: "" })
         setShowAssetForm(false)
     }
 
@@ -776,7 +779,7 @@ export default function DataWPPage() {
 
     const handleSubmit = async () => {
         if (!formData.name || !formData.address) return;
-        
+
         let finalAssets = [...formAssets];
 
         // Jika form Kikitir masih terbuka, pastikan data yang diketik ikut tersimpan
@@ -790,7 +793,7 @@ export default function DataWPPage() {
                 });
                 return;
             }
-            
+
             if (editingAssetIndex !== null) {
                 finalAssets[editingAssetIndex] = newAsset;
             } else {
@@ -853,7 +856,8 @@ export default function DataWPPage() {
                     year: new Date().getFullYear(),
                     original_name: a.original_name,
                     persil: a.persil,
-                    blok: a.blok
+                    blok: a.blok,
+                    kelas: a.kelas
                 }))
 
                 const { error: assetError } = await supabase
@@ -934,10 +938,15 @@ export default function DataWPPage() {
             nik: wp.nik || "",
             whatsapp: wp.whatsapp || "",
             group_id: wp.group_id || "",
-            rt: wp.rt || "", // New
-            rw: wp.rw || ""  // New
+            rt: wp.rt || "",
+            rw: wp.rw || ""
         })
         setFormAssets(wp.assets)
+        setNewAsset({ nop: "", loc: "", tax: 0, year: new Date().getFullYear(), status: 'unpaid', original_name: "", persil: "", blok: "", kelas: "" })
+        setEditingAssetIndex(null)
+        setShowAssetForm(false)
+        setDhkpMatch({ found: false, loading: false })
+        setNopAllocations({ totalAssigned: 0, owners: [] })
         setIsModalOpen(true)
     }
 
@@ -1005,7 +1014,7 @@ export default function DataWPPage() {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 {wp.assets.length > 0 ? (
                                     <div className="space-y-2">
                                         {wp.assets.map((asset, idx) => (
@@ -1074,10 +1083,13 @@ export default function DataWPPage() {
                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-muted/30 p-3 rounded-lg gap-2">
                                     <div>
                                         <p className="text-sm font-medium">{asset.loc}</p>
-                                        <p className="text-xs font-mono text-muted-foreground mt-0.5 whitespace-nowrap overflow-x-auto flex gap-1">
+                                        <p className="text-xs font-mono text-muted-foreground mt-0.5 whitespace-nowrap overflow-x-auto flex gap-1 items-center">
                                             <span>{asset.nop.startsWith('TANPA') ? 'NO-NOP' : asset.nop}</span>
-                                            {asset.blok && <span>• Blok {asset.blok}</span>}
-                                            {asset.persil && <span>• Persil {asset.persil}</span>}
+                                            {(asset.blok || asset.persil || asset.kelas) && (
+                                                <span className="bg-background px-1 rounded border text-[10px] ml-1">
+                                                    {`${asset.blok || ''} ${asset.persil || ''} ${asset.kelas || ''}`.trim().replace(/\s+/g, ' ')}
+                                                </span>
+                                            )}
                                         </p>
                                         {asset.original_name && <p className="text-[10px] font-semibold italic mt-0.5">Ex: {asset.original_name}</p>}
                                     </div>
@@ -1161,7 +1173,7 @@ export default function DataWPPage() {
                     {/* RW Dropdown */}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-muted-foreground ml-1">Filter RW</label>
-                        <select 
+                        <select
                             className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer"
                             value={filterRW || ""}
                             onChange={(e) => setFilterRW(e.target.value || null)}
@@ -1175,7 +1187,7 @@ export default function DataWPPage() {
                     {/* Area (RT) Dropdown */}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-muted-foreground ml-1">Spesifik Area / RT</label>
-                        <select 
+                        <select
                             className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer disabled:opacity-50"
                             value={filterArea || ""}
                             onChange={(e) => setFilterArea(e.target.value || null)}
@@ -1239,11 +1251,17 @@ export default function DataWPPage() {
             {/* Main Modal (Add/Edit) */}
             <Modal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setIsModalOpen(false)
+                    resetForm()
+                }}
                 title={modalMode === 'add' ? "Tambah Wajib Pajak Baru" : "Edit Data Wajib Pajak"}
                 footer={
                     <>
-                        <Button variant="ghost" onClick={() => setIsModalOpen(false)} disabled={isLoading}>Batal</Button>
+                        <Button variant="ghost" onClick={() => {
+                            setIsModalOpen(false)
+                            resetForm()
+                        }} disabled={isLoading}>Batal</Button>
                         <Button onClick={handleSubmit} disabled={isLoading}>
                             {isLoading ? 'Menyimpan...' : 'Simpan Data'}
                         </Button>
@@ -1361,11 +1379,14 @@ export default function DataWPPage() {
                                                     Shared
                                                 </Badge>
                                             )}
-                                            {asset.blok && <span className="hidden sm:inline">•</span>}
-                                            {asset.blok && <span className="bg-background px-1 rounded border">Blok {asset.blok}</span>}
-
-                                            {asset.persil && <span className="hidden sm:inline">•</span>}
-                                            {asset.persil && <span className="bg-background px-1 rounded border">Persil {asset.persil}</span>}
+                                            {(asset.blok || asset.persil || asset.kelas) && (
+                                                <>
+                                                    <span className="hidden sm:inline">•</span>
+                                                    <span className="bg-background px-1 rounded border text-[10px]">
+                                                        {`${asset.blok || ''} ${asset.persil || ''} ${asset.kelas || ''}`.trim().replace(/\s+/g, ' ')}
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                         {asset.original_name && (
                                             <div className="text-[10px] text-muted-foreground italic mt-0.5">
@@ -1514,12 +1535,12 @@ export default function DataWPPage() {
                                                 <span className="text-muted-foreground">Total Dialokasikan:</span>
                                                 <span>Rp {nopAllocations.totalAssigned.toLocaleString('id-ID')}</span>
                                             </div>
-                                            
+
                                             <div className="border-t pt-2 mt-1">
                                                 {(() => {
                                                     const currentInputTax = newAsset.tax || 0;
                                                     const sisa = dhkpMatch.ketetapan - nopAllocations.totalAssigned - currentInputTax;
-                                                    
+
                                                     if (sisa === 0) {
                                                         return <div className="flex items-center gap-1 text-green-600 font-semibold"><div className="w-2 h-2 rounded-full bg-green-500"></div> PAS (Alokasi Sempurna)</div>;
                                                     } else if (sisa > 0) {
@@ -1529,7 +1550,7 @@ export default function DataWPPage() {
                                                     }
                                                 })()}
                                             </div>
-                                            
+
                                             {nopAllocations.owners.length > 0 && (
                                                 <div className="mt-2 text-xs">
                                                     <span className="font-medium text-muted-foreground block mb-1">Sudah Dipecah Ke:</span>
@@ -1559,27 +1580,40 @@ export default function DataWPPage() {
                                             onChange={(e) => setNewAsset({ ...newAsset, original_name: e.target.value })}
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label htmlFor="assetBlok" className="text-xs font-medium">Blok</label>
-                                        <Input
-                                            name="assetBlok"
-                                            id="assetBlok"
-                                            placeholder="001"
-                                            className="h-9 text-sm w-full"
-                                            value={newAsset.blok || ""}
-                                            onChange={(e) => setNewAsset({ ...newAsset, blok: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label htmlFor="assetPersil" className="text-xs font-medium">Persil</label>
-                                        <Input
-                                            name="assetPersil"
-                                            id="assetPersil"
-                                            placeholder="12a"
-                                            className="h-9 text-sm w-full"
-                                            value={newAsset.persil || ""}
-                                            onChange={(e) => setNewAsset({ ...newAsset, persil: e.target.value })}
-                                        />
+                                    <div className="grid grid-cols-3 gap-2 col-span-2">
+                                        <div className="space-y-2">
+                                            <label htmlFor="assetBlok" className="text-xs font-medium">Blok</label>
+                                            <Input
+                                                name="assetBlok"
+                                                id="assetBlok"
+                                                placeholder="001"
+                                                className="h-9 text-sm w-full"
+                                                value={newAsset.blok || ""}
+                                                onChange={(e) => setNewAsset({ ...newAsset, blok: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label htmlFor="assetPersil" className="text-xs font-medium">Persil</label>
+                                            <Input
+                                                name="assetPersil"
+                                                id="assetPersil"
+                                                placeholder="12a"
+                                                className="h-9 text-sm w-full"
+                                                value={newAsset.persil || ""}
+                                                onChange={(e) => setNewAsset({ ...newAsset, persil: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label htmlFor="assetKelas" className="text-xs font-medium">Kelas</label>
+                                            <Input
+                                                name="assetKelas"
+                                                id="assetKelas"
+                                                placeholder="D/SII"
+                                                className="h-9 text-sm w-full"
+                                                value={newAsset.kelas || ""}
+                                                onChange={(e) => setNewAsset({ ...newAsset, kelas: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 pt-1">
