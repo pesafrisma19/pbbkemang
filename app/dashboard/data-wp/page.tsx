@@ -101,9 +101,26 @@ export default function DataWPPage() {
 
     const [localData, setLocalData] = useState<WPData[]>([])
     const [filterKampung, setFilterKampung] = useState<string | null>(null)
+    const [filterRW, setFilterRW] = useState<string | null>(null)
+    const [filterRT, setFilterRT] = useState<string | null>(null)
 
     // Extract unique kampungs dynamically
     const uniqueKampungs = Array.from(new Set(localData.map(wp => wp.address))).filter(Boolean).sort()
+    
+    // Extract unique RW dynamically based on selected kampung
+    const uniqueRWs = Array.from(new Set(localData.filter(wp => !filterKampung || wp.address === filterKampung).map(wp => wp.rw))).filter(Boolean).sort((a, b) => Number(a) - Number(b))
+    
+    // Extract unique RT dynamically based on selected kampung and RW
+    const uniqueRTs = Array.from(new Set(localData.filter(wp => (!filterKampung || wp.address === filterKampung) && (!filterRW || wp.rw === filterRW)).map(wp => wp.rt))).filter(Boolean).sort((a, b) => Number(a) - Number(b))
+
+    useEffect(() => {
+        setFilterRW(null)
+        setFilterRT(null)
+    }, [filterKampung])
+
+    useEffect(() => {
+        setFilterRT(null)
+    }, [filterRW])
 
     // 1. Tentukan keluarga mana saja yang memiliki minimal 1 anggota yang cocok dengan pencarian
     const lowerSearch = searchTerm.toLowerCase().trim()
@@ -127,10 +144,12 @@ export default function DataWPPage() {
         })
     }
 
-    // 2. Saring data berdasarkan Kampung & Hasil Pencarian
+    // 2. Saring data berdasarkan Kampung, RW, RT & Hasil Pencarian
     const filteredData = localData.filter(wp => {
         const matchKampung = filterKampung ? wp.address === filterKampung : true;
-        if (!matchKampung) return false;
+        const matchRW = filterRW ? wp.rw === filterRW : true;
+        const matchRT = filterRT ? wp.rt === filterRT : true;
+        if (!matchKampung || !matchRW || !matchRT) return false;
 
         if (!lowerSearch) return true; // Tidak ada pencarian, loloskan semua
 
@@ -190,7 +209,7 @@ export default function DataWPPage() {
     // Reset page when search changes
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchTerm, filterKampung])
+    }, [searchTerm, filterKampung, filterRW, filterRT])
 
     // --- Excel Handling ---
 
@@ -1033,31 +1052,81 @@ export default function DataWPPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-                {/* Kampung Buttons */}
-                {uniqueKampungs.length > 0 && (
-                    <div className="flex flex-wrap gap-2 items-center">
-                        <span className="text-sm font-semibold mr-2 text-muted-foreground">Filter Kampung:</span>
-                        <Button
-                            variant={filterKampung === null ? "primary" : "outline"}
-                            size="sm"
-                            className="h-8 rounded-full"
-                            onClick={() => setFilterKampung(null)}
-                        >
-                            <X size={14} className="mr-1" /> Semua
-                        </Button>
-                        {uniqueKampungs.map(k => (
+                {/* Kampung, RW, RT Filters */}
+                <div className="flex flex-col gap-2">
+                    {uniqueKampungs.length > 0 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-sm font-semibold mr-2 text-muted-foreground w-20">Kampung:</span>
                             <Button
-                                key={String(k)}
-                                variant={filterKampung === k ? "primary" : "outline"}
+                                variant={filterKampung === null ? "primary" : "outline"}
                                 size="sm"
                                 className="h-8 rounded-full"
-                                onClick={() => setFilterKampung(String(k))}
+                                onClick={() => setFilterKampung(null)}
                             >
-                                {String(k)}
+                                <X size={14} className="mr-1" /> Semua
                             </Button>
-                        ))}
-                    </div>
-                )}
+                            {uniqueKampungs.map(k => (
+                                <Button
+                                    key={String(k)}
+                                    variant={filterKampung === k ? "primary" : "outline"}
+                                    size="sm"
+                                    className="h-8 rounded-full"
+                                    onClick={() => setFilterKampung(String(k))}
+                                >
+                                    {String(k)}
+                                </Button>
+                            ))}
+                        </div>
+                    )}
+                    {uniqueRWs.length > 0 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-sm font-semibold mr-2 text-muted-foreground w-20">RW:</span>
+                            <Button
+                                variant={filterRW === null ? "primary" : "outline"}
+                                size="sm"
+                                className="h-8 rounded-full"
+                                onClick={() => setFilterRW(null)}
+                            >
+                                <X size={14} className="mr-1" /> Semua
+                            </Button>
+                            {uniqueRWs.map(rw => (
+                                <Button
+                                    key={String(rw)}
+                                    variant={filterRW === rw ? "primary" : "outline"}
+                                    size="sm"
+                                    className="h-8 rounded-full"
+                                    onClick={() => setFilterRW(String(rw))}
+                                >
+                                    {String(rw)}
+                                </Button>
+                            ))}
+                        </div>
+                    )}
+                    {uniqueRTs.length > 0 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-sm font-semibold mr-2 text-muted-foreground w-20">RT:</span>
+                            <Button
+                                variant={filterRT === null ? "primary" : "outline"}
+                                size="sm"
+                                className="h-8 rounded-full"
+                                onClick={() => setFilterRT(null)}
+                            >
+                                <X size={14} className="mr-1" /> Semua
+                            </Button>
+                            {uniqueRTs.map(rt => (
+                                <Button
+                                    key={String(rt)}
+                                    variant={filterRT === rt ? "primary" : "outline"}
+                                    size="sm"
+                                    className="h-8 rounded-full"
+                                    onClick={() => setFilterRT(String(rt))}
+                                >
+                                    {String(rt)}
+                                </Button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 <div className="glass-card p-4 rounded-xl flex items-center gap-4">
                     <Input

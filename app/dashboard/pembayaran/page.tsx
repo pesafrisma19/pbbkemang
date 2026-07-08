@@ -44,6 +44,8 @@ export default function PembayaranPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('unpaid')
     const [filterKampung, setFilterKampung] = useState<string | null>(null)
+    const [filterRW, setFilterRW] = useState<string | null>(null)
+    const [filterRT, setFilterRT] = useState<string | null>(null)
 
     // Confirmation Modal State
     const [pendingToggle, setPendingToggle] = useState<{
@@ -201,7 +203,7 @@ export default function PembayaranPage() {
         return stats
     }, [allData])
 
-    // Unique Kampungs
+    // Unique Kampungs, RWs, RTs
     const uniqueKampungs = useMemo(() => {
         const set = new Set<string>()
         allData.forEach(d => {
@@ -209,6 +211,31 @@ export default function PembayaranPage() {
         })
         return Array.from(set).sort()
     }, [allData])
+
+    const uniqueRWs = useMemo(() => {
+        const set = new Set<string>()
+        allData.forEach(d => {
+            if ((!filterKampung || d.address === filterKampung) && d.rw) set.add(d.rw.trim())
+        })
+        return Array.from(set).sort((a, b) => Number(a) - Number(b))
+    }, [allData, filterKampung])
+
+    const uniqueRTs = useMemo(() => {
+        const set = new Set<string>()
+        allData.forEach(d => {
+            if ((!filterKampung || d.address === filterKampung) && (!filterRW || d.rw === filterRW) && d.rt) set.add(d.rt.trim())
+        })
+        return Array.from(set).sort((a, b) => Number(a) - Number(b))
+    }, [allData, filterKampung, filterRW])
+
+    useEffect(() => {
+        setFilterRW(null)
+        setFilterRT(null)
+    }, [filterKampung])
+
+    useEffect(() => {
+        setFilterRT(null)
+    }, [filterRW])
 
     const filteredResults = useMemo(() => {
         const lowerSearch = searchTerm.toLowerCase().trim()
@@ -239,13 +266,15 @@ export default function PembayaranPage() {
             return true;
         }
 
-        const checkKampung = (g: WPGroup) => {
-            if (!filterKampung) return true;
-            return g.address === filterKampung;
+        const checkArea = (g: WPGroup) => {
+            if (filterKampung && g.address !== filterKampung) return false;
+            if (filterRW && g.rw !== filterRW) return false;
+            if (filterRT && g.rt !== filterRT) return false;
+            return true;
         }
 
         const filteredCitizens = allData.filter(g => {
-            if (!checkKampung(g) || !checkStatus(g)) return false;
+            if (!checkArea(g) || !checkStatus(g)) return false;
 
             if (!lowerSearch) return true;
 
@@ -294,7 +323,7 @@ export default function PembayaranPage() {
         });
 
         return groupedData;
-    }, [allData, searchTerm, filterStatus, filterKampung])
+    }, [allData, searchTerm, filterStatus, filterKampung, filterRW, filterRT])
 
     // Pagination Logic
     const totalPages = Math.ceil(filteredResults.length / itemsPerPage)
@@ -307,7 +336,7 @@ export default function PembayaranPage() {
     // Reset page on search or filter change
     useEffect(() => {
         setCurrentPage(1)
-    }, [searchTerm, filterStatus, filterKampung])
+    }, [searchTerm, filterStatus, filterKampung, filterRW, filterRT])
 
     // Helper to format date
     const formatDate = (dateString: string | null) => {
@@ -497,31 +526,81 @@ export default function PembayaranPage() {
             </div>
 
             <div className="sticky top-0 z-30 pt-2 pb-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 space-y-3">
-                {/* Kampung Buttons */}
-                {uniqueKampungs.length > 0 && (
-                    <div className="flex flex-wrap gap-2 items-center">
-                        <span className="text-sm font-semibold mr-2 text-muted-foreground">Filter Kampung:</span>
-                        <Button
-                            variant={filterKampung === null ? "primary" : "outline"}
-                            size="sm"
-                            className="h-8 rounded-full"
-                            onClick={() => setFilterKampung(null)}
-                        >
-                            <X size={14} className="mr-1" /> Semua
-                        </Button>
-                        {uniqueKampungs.map(k => (
+                {/* Area Filters */}
+                <div className="flex flex-col gap-2">
+                    {uniqueKampungs.length > 0 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-sm font-semibold mr-2 text-muted-foreground w-20">Kampung:</span>
                             <Button
-                                key={String(k)}
-                                variant={filterKampung === k ? "primary" : "outline"}
+                                variant={filterKampung === null ? "primary" : "outline"}
                                 size="sm"
                                 className="h-8 rounded-full"
-                                onClick={() => setFilterKampung(String(k))}
+                                onClick={() => setFilterKampung(null)}
                             >
-                                {String(k)}
+                                <X size={14} className="mr-1" /> Semua
                             </Button>
-                        ))}
-                    </div>
-                )}
+                            {uniqueKampungs.map(k => (
+                                <Button
+                                    key={String(k)}
+                                    variant={filterKampung === k ? "primary" : "outline"}
+                                    size="sm"
+                                    className="h-8 rounded-full"
+                                    onClick={() => setFilterKampung(String(k))}
+                                >
+                                    {String(k)}
+                                </Button>
+                            ))}
+                        </div>
+                    )}
+                    {uniqueRWs.length > 0 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-sm font-semibold mr-2 text-muted-foreground w-20">RW:</span>
+                            <Button
+                                variant={filterRW === null ? "primary" : "outline"}
+                                size="sm"
+                                className="h-8 rounded-full"
+                                onClick={() => setFilterRW(null)}
+                            >
+                                <X size={14} className="mr-1" /> Semua
+                            </Button>
+                            {uniqueRWs.map(rw => (
+                                <Button
+                                    key={String(rw)}
+                                    variant={filterRW === rw ? "primary" : "outline"}
+                                    size="sm"
+                                    className="h-8 rounded-full"
+                                    onClick={() => setFilterRW(String(rw))}
+                                >
+                                    {String(rw)}
+                                </Button>
+                            ))}
+                        </div>
+                    )}
+                    {uniqueRTs.length > 0 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <span className="text-sm font-semibold mr-2 text-muted-foreground w-20">RT:</span>
+                            <Button
+                                variant={filterRT === null ? "primary" : "outline"}
+                                size="sm"
+                                className="h-8 rounded-full"
+                                onClick={() => setFilterRT(null)}
+                            >
+                                <X size={14} className="mr-1" /> Semua
+                            </Button>
+                            {uniqueRTs.map(rt => (
+                                <Button
+                                    key={String(rt)}
+                                    variant={filterRT === rt ? "primary" : "outline"}
+                                    size="sm"
+                                    className="h-8 rounded-full"
+                                    onClick={() => setFilterRT(String(rt))}
+                                >
+                                    {String(rt)}
+                                </Button>
+                            ))}
+                        </div>
+                    )}
+                </div>
                 
                 {/* Search Bar */}
                 <Input
