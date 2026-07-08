@@ -31,6 +31,9 @@ export default function DhkpAdminPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [dhkpResults, setDhkpResults] = useState<DhkpRecord[]>([])
     const [totalCount, setTotalCount] = useState(0)
+    
+    // Allocations State
+    const [allocations, setAllocations] = useState<Record<string, { total: number, count: number }>>({})
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1)
@@ -76,6 +79,31 @@ export default function DhkpAdminPage() {
 
             setDhkpResults(data || [])
             if (count !== null) setTotalCount(count)
+            
+            // 2. Fetch Allocations for the current page
+            if (data && data.length > 0) {
+                const nops = data.map(d => String(d.nop))
+                const { data: allocData } = await supabase
+                    .from('tax_objects')
+                    .select('nop, amount_due')
+                    .in('nop', nops)
+                
+                const allocMap: Record<string, { total: number, count: number }> = {}
+                nops.forEach(n => allocMap[n] = { total: 0, count: 0 })
+                
+                if (allocData) {
+                    allocData.forEach(a => {
+                        const strNop = String(a.nop)
+                        if (allocMap[strNop]) {
+                            allocMap[strNop].total += (a.amount_due || 0)
+                            allocMap[strNop].count += 1
+                        }
+                    })
+                }
+                setAllocations(allocMap)
+            } else {
+                setAllocations({})
+            }
 
         } catch (error) {
             console.error("Error fetching DHKP:", error)
@@ -476,7 +504,21 @@ export default function DhkpAdminPage() {
                         <tbody className="divide-y divide-border">
                             {dhkpResults.map((record) => (
                                 <tr key={record.id} className="hover:bg-muted/30 transition-colors">
-                                    <td className="px-4 py-3 font-mono text-xs">{record.nop}</td>
+                                    <td className="px-4 py-3 font-mono text-xs">
+                                        <div className="flex flex-col gap-1 items-start">
+                                            <span>{record.nop}</span>
+                                            {(() => {
+                                                const alloc = allocations[record.nop]
+                                                if (!alloc || alloc.count === 0) {
+                                                    return <span className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 px-1.5 py-0.5 rounded text-[9px] font-semibold border border-slate-200 dark:border-slate-700">Belum Dibagikan</span>
+                                                }
+                                                if (alloc.count === 1) {
+                                                    return <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[9px] font-semibold border border-emerald-200 dark:border-emerald-800">Utuh (1 Org)</span>
+                                                }
+                                                return <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 px-1.5 py-0.5 rounded text-[9px] font-semibold border border-blue-200 dark:border-blue-800">Dipecah ({alloc.count} Org)</span>
+                                            })()}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-3">
                                         <div className="font-semibold">{record.nama_wp}</div>
                                         {renderJenisTanahBadge(record)}
@@ -507,8 +549,21 @@ export default function DhkpAdminPage() {
                                             <span className="text-muted-foreground/50 text-xs">-</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-right font-bold">
-                                        Rp {record.ketetapan.toLocaleString('id-ID')}
+                                    <td className="px-4 py-3 text-right">
+                                        <div className="font-bold">Rp {record.ketetapan.toLocaleString('id-ID')}</div>
+                                        {(() => {
+                                            const alloc = allocations[record.nop]
+                                            if (!alloc || alloc.count === 0) return null;
+                                            
+                                            const sisa = record.ketetapan - alloc.total;
+                                            if (sisa === 0) {
+                                                return <div className="text-[10px] text-emerald-600 font-semibold mt-0.5">✓ Alokasi PAS</div>
+                                            } else if (sisa > 0) {
+                                                return <div className="text-[10px] text-red-500 font-semibold mt-0.5">⚠️ Sisa Rp {sisa.toLocaleString('id-ID')}</div>
+                                            } else {
+                                                return <div className="text-[10px] text-blue-500 font-semibold mt-0.5">Lebih Rp {Math.abs(sisa).toLocaleString('id-ID')}</div>
+                                            }
+                                        })()}
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         <button
