@@ -106,13 +106,13 @@ export default function DataWPPage() {
     // Extract unique RW dynamically
     const uniqueRWs = Array.from(new Set(localData.map(wp => wp.rw))).filter(Boolean).sort((a, b) => Number(a) - Number(b))
     
-    // Extract unique Area (Kampung RT/RW) dynamically based on selected RW
+    // Extract unique Area (RT/RW) dynamically based on selected RW
     const uniqueAreas = Array.from(new Set(
         localData
             .filter(wp => !filterRW || wp.rw === filterRW)
             .map(wp => {
                 if (!wp.rt || !wp.rw) return null;
-                return `${wp.address} RT ${wp.rt}/${wp.rw}`;
+                return `RT ${wp.rt}/${wp.rw}`;
             })
     )).filter(Boolean).sort()
 
@@ -145,7 +145,7 @@ export default function DataWPPage() {
     // 2. Saring data berdasarkan RW, Area & Hasil Pencarian
     const filteredData = localData.filter(wp => {
         const matchRW = filterRW ? wp.rw === filterRW : true;
-        const wpArea = (wp.rt && wp.rw) ? `${wp.address} RT ${wp.rt}/${wp.rw}` : null;
+        const wpArea = (wp.rt && wp.rw) ? `RT ${wp.rt}/${wp.rw}` : null;
         const matchArea = filterArea ? wpArea === filterArea : true;
         
         if (!matchRW || !matchArea) return false;
@@ -1147,8 +1147,8 @@ export default function DataWPPage() {
                     <div className="space-y-4 border-b pb-4">
                         <h3 className="font-semibold text-sm text-accent-blue">I. Data Diri Warga</h3>
 
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2 col-span-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-2 sm:col-span-2">
                                 <label htmlFor="fullName" className="text-sm font-medium">Nama Lengkap</label>
                                 <Input
                                     name="fullName"
@@ -1158,7 +1158,7 @@ export default function DataWPPage() {
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 />
                             </div>
-                            <div className="space-y-2 col-span-1">
+                            <div className="space-y-2 sm:col-span-1">
                                 <label htmlFor="groupId" className="text-sm font-medium">No. Group (Kel)</label>
                                 <Input
                                     name="groupId"
@@ -1170,7 +1170,7 @@ export default function DataWPPage() {
                                 />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label htmlFor="nik" className="text-sm font-medium">NIK (KTP)</label>
                                 <Input
@@ -1195,7 +1195,7 @@ export default function DataWPPage() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Alamat Lengkap</label>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 <div className="col-span-2">
                                     <Input
                                         name="address"
@@ -1390,40 +1390,38 @@ export default function DataWPPage() {
                                         <p className="text-xs font-semibold text-muted-foreground">Detail Tambahan (Opsional)</p>
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 col-span-2">
                                         <label htmlFor="originalName" className="text-xs font-medium">Nama Asal/Sebelumnya</label>
                                         <Input
                                             name="originalName"
                                             id="originalName"
                                             placeholder="Nama pemilik lama..."
-                                            className="h-9 text-sm"
+                                            className="h-9 text-sm w-full"
                                             value={newAsset.original_name || ""}
                                             onChange={(e) => setNewAsset({ ...newAsset, original_name: e.target.value })}
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3 col-span-1">
-                                        <div className="space-y-2">
-                                            <label htmlFor="assetBlok" className="text-xs font-medium">Blok</label>
-                                            <Input
-                                                name="assetBlok"
-                                                id="assetBlok"
-                                                placeholder="001"
-                                                className="h-9 text-sm"
-                                                value={newAsset.blok || ""}
-                                                onChange={(e) => setNewAsset({ ...newAsset, blok: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label htmlFor="assetPersil" className="text-xs font-medium">Persil</label>
-                                            <Input
-                                                name="assetPersil"
-                                                id="assetPersil"
-                                                placeholder="12a"
-                                                className="h-9 text-sm"
-                                                value={newAsset.persil || ""}
-                                                onChange={(e) => setNewAsset({ ...newAsset, persil: e.target.value })}
-                                            />
-                                        </div>
+                                    <div className="space-y-2">
+                                        <label htmlFor="assetBlok" className="text-xs font-medium">Blok</label>
+                                        <Input
+                                            name="assetBlok"
+                                            id="assetBlok"
+                                            placeholder="001"
+                                            className="h-9 text-sm w-full"
+                                            value={newAsset.blok || ""}
+                                            onChange={(e) => setNewAsset({ ...newAsset, blok: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label htmlFor="assetPersil" className="text-xs font-medium">Persil</label>
+                                        <Input
+                                            name="assetPersil"
+                                            id="assetPersil"
+                                            placeholder="12a"
+                                            className="h-9 text-sm w-full"
+                                            value={newAsset.persil || ""}
+                                            onChange={(e) => setNewAsset({ ...newAsset, persil: e.target.value })}
+                                        />
                                     </div>
                                 </div>
                                 <div className="flex gap-2 pt-1">
