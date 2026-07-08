@@ -776,6 +776,28 @@ export default function DataWPPage() {
 
     const handleSubmit = async () => {
         if (!formData.name || !formData.address) return;
+        
+        let finalAssets = [...formAssets];
+
+        // Jika form Kikitir masih terbuka, pastikan data yang diketik ikut tersimpan
+        if (showAssetForm) {
+            if (!newAsset.nop || !newAsset.loc) {
+                setAlertState({
+                    isOpen: true,
+                    title: "Form Belum Selesai",
+                    message: "Anda sedang menambah/mengedit Kikitir. Harap lengkapi NOP dan Lokasi, atau klik 'Batal' pada form Kikitir jika tidak jadi.",
+                    type: 'error'
+                });
+                return;
+            }
+            
+            if (editingAssetIndex !== null) {
+                finalAssets[editingAssetIndex] = newAsset;
+            } else {
+                finalAssets.push(newAsset);
+            }
+        }
+
         setIsLoading(true)
 
         try {
@@ -787,8 +809,8 @@ export default function DataWPPage() {
                 address: formData.address,
                 whatsapp: formData.whatsapp,
                 group_id: formData.group_id,
-                rt: formData.rt, // New
-                rw: formData.rw  // New
+                rt: formData.rt,
+                rw: formData.rw
             }
 
             if (modalMode === 'add') {
@@ -821,10 +843,10 @@ export default function DataWPPage() {
             }
 
             // 3. Insert All Assets
-            if (formAssets.length > 0 && citizenId) {
-                const assetsToInsert = formAssets.map(a => ({
+            if (finalAssets.length > 0 && citizenId) {
+                const assetsToInsert = finalAssets.map(a => ({
                     citizen_id: citizenId,
-                    nop: String(a.nop).startsWith('TANPA-NOP') ? a.nop : String(a.nop).replace(/\D/g, ''), // Ensure clean save
+                    nop: String(a.nop).startsWith('TANPA-NOP') ? a.nop : String(a.nop).replace(/\D/g, ''),
                     location_name: a.loc,
                     amount_due: a.tax,
                     status: a.status || 'unpaid',
