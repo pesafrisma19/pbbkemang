@@ -106,10 +106,18 @@ export default function DataWPPage() {
     // Extract unique RW dynamically
     const uniqueRWs = Array.from(new Set(localData.map(wp => wp.rw))).filter(Boolean).sort((a, b) => Number(a) - Number(b))
     
+    // Mengecek apakah ada data yang RW-nya kosong
+    const hasEmptyRW = localData.some(wp => !wp.rw)
+    // Mengecek apakah ada data yang RT/RW-nya kosong (untuk filter Area)
+    const hasEmptyArea = localData.some(wp => !wp.rt || !wp.rw)
+
     // Extract unique Area (RT/RW) dynamically based on selected RW
     const uniqueAreas = Array.from(new Set(
         localData
-            .filter(wp => !filterRW || wp.rw === filterRW)
+            .filter(wp => {
+                if (filterRW === 'KOSONG') return !wp.rw;
+                return !filterRW || wp.rw === filterRW;
+            })
             .map(wp => {
                 if (!wp.rt || !wp.rw) return null;
                 return `RT ${wp.rt}/${wp.rw}`;
@@ -144,9 +152,17 @@ export default function DataWPPage() {
 
     // 2. Saring data berdasarkan RW, Area & Hasil Pencarian
     const filteredData = localData.filter(wp => {
-        const matchRW = filterRW ? wp.rw === filterRW : true;
-        const wpArea = (wp.rt && wp.rw) ? `RT ${wp.rt}/${wp.rw}` : null;
-        const matchArea = filterArea ? wpArea === filterArea : true;
+        let matchRW = true;
+        if (filterRW) {
+            if (filterRW === 'KOSONG') matchRW = !wp.rw;
+            else matchRW = wp.rw === filterRW;
+        }
+
+        let matchArea = true;
+        if (filterArea) {
+            if (filterArea === 'KOSONG') matchArea = !wp.rt || !wp.rw;
+            else matchArea = (wp.rt && wp.rw) ? `RT ${wp.rt}/${wp.rw}` === filterArea : false;
+        }
         
         if (!matchRW || !matchArea) return false;
 
@@ -1062,6 +1078,7 @@ export default function DataWPPage() {
                             onChange={(e) => setFilterRW(e.target.value || null)}
                         >
                             <option value="">Semua RW</option>
+                            {hasEmptyRW && <option value="KOSONG" className="font-semibold text-accent-orange">Luar Desa / Tanpa RW</option>}
                             {uniqueRWs.map(rw => <option key={String(rw)} value={String(rw)}>RW {String(rw)}</option>)}
                         </select>
                     </div>
@@ -1073,9 +1090,10 @@ export default function DataWPPage() {
                             className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer disabled:opacity-50"
                             value={filterArea || ""}
                             onChange={(e) => setFilterArea(e.target.value || null)}
-                            disabled={uniqueAreas.length === 0}
+                            disabled={uniqueAreas.length === 0 && !hasEmptyArea}
                         >
                             <option value="">Semua Area</option>
+                            {hasEmptyArea && <option value="KOSONG" className="font-semibold text-accent-orange">Luar Desa / Tanpa RT</option>}
                             {uniqueAreas.map(area => <option key={String(area)} value={String(area)}>{String(area)}</option>)}
                         </select>
                     </div>
